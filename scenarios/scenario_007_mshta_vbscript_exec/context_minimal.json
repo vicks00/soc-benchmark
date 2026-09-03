@@ -1,0 +1,44 @@
+{
+  "case_id": "CASE-AB34329E",
+  "environment": {
+    "host": "WKS-4471",
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain_role": "workstation",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-EVASION-005",
+    "rule_name": "mshta.exe Executed Inline Script Without an HTA File",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "description": "mshta.exe was invoked with a vbscript: or javascript: URI on its command line rather than a path to an .hta file. In that form mshta acts as a general-purpose script interpreter, which is used to run code under the identity of a signed Microsoft binary and to bypass application-control policies that permit mshta.exe.",
+    "detection_logic": "Sysmon EventID=1 (ProcessCreate) WHERE Image ENDSWITH '\\mshta.exe' AND CommandLine MATCHES ANY ('vbscript:', 'javascript:', 'about:') AND CommandLine NOT MATCHES '\\.hta'",
+    "data_source": "Sysmon Operational (EventID 1)",
+    "fired_at": "2020-10-22T06:57:59.855Z",
+    "trigger_count": 1,
+    "host": "WKS-4471"
+  },
+  "context_tier": "minimal",
+  "telemetry": [
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-10-22 06:57:59.855",
+      "record_id": "R000284",
+      "process_id": "10980",
+      "image": "C:\\Windows\\System32\\mshta.exe",
+      "command_line": "mshta  vbscript:Execute(\"CreateObject(\"\"Wscript.Shell\"\").Run \"\"powershell -noexit -command Get-Service sysmon\"\":close\")",
+      "current_directory": "C:\\Users\\t.okafor\\",
+      "user": "WKS-4471\\t.okafor",
+      "integrity_level": "High",
+      "hashes": "SHA1=99A0A1B05E60A5F1FC8A068F953F0510E0230EFA,MD5=7C5C45D9F45694521548E99BA5D4E535,SHA256=229EBBA62347B77EA2FFAD93308E7052BDAE39A24EA828D6EF93FE694CA62197,IMPHASH=42DA177DE2FAA97C3DFAEC9562772A7F",
+      "parent_process_id": "5888",
+      "parent_image": "C:\\Windows\\System32\\cmd.exe",
+      "parent_command_line": "\"C:\\windows\\system32\\cmd.exe\" ",
+      "original_file_name": "MSHTA.EXE"
+    }
+  ]
+}

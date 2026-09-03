@@ -1,0 +1,139 @@
+{
+  "case_id": "CASE-E6F703CA",
+  "environment": {
+    "host": "WKS-4471",
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain_role": "workstation",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing",
+      "Application"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-CRED-001",
+    "rule_name": "LSASS Process Memory Read via Suspicious Handle",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "description": "A process obtained a handle to lsass.exe with access rights permitting memory reads (PROCESS_VM_READ). LSASS holds plaintext credentials, hashes, and Kerberos tickets in memory; non-security-tooling reads of LSASS are a high-fidelity indicator of credential theft, independent of the dumping tool used.",
+    "detection_logic": "Sysmon EventID=10 (ProcessAccess) WHERE TargetImage ENDSWITH '\\lsass.exe' AND GrantedAccess IN (0x1010,0x1038,0x1410,0x1438,0x143a,0x1fffff) AND SourceImage NOT IN (known_security_tooling) AND SourceImage NOT IN (wininit.exe, csrss.exe, services.exe, MsMpEng.exe)",
+    "data_source": "Sysmon Operational (EventID 10)",
+    "fired_at": "2020-10-18T23:50:05.963Z",
+    "trigger_count": 2,
+    "host": "WKS-4471"
+  },
+  "context_tier": "curated",
+  "telemetry": [
+    {
+      "event_id": "Application/1000",
+      "event_type": "ApplicationError",
+      "utc_time": "2020-10-18 23:50:05.812",
+      "record_id": "R000090",
+      "message": "Faulting application name: lsass.exe, version: 10.0.18362.1, time stamp: 0x8a1c4f21\r\nFaulting module name: msv1_0.DLL, version: 10.0.18362.900, time stamp: 0x2b7e10c4\r\nException code: 0xc0000005\r\nFault offset: 0x000000000001a3f7\r\nFaulting process id: 0x2f4\r\nFaulting application start time: 0x01d6a5b7e2119c40\r\nFaulting application path: C:\\Windows\\system32\\lsass.exe\r\nFaulting module path: C:\\Windows\\system32\\msv1_0.DLL\r\nReport Id: 9f2b4c1e-7a3d-4e58-b1c0-6d9e4f2a8c53"
+    },
+    {
+      "event_id": "System/7036",
+      "event_type": "ServiceStateChange",
+      "utc_time": "2020-10-18 23:50:05.851",
+      "record_id": "R000115",
+      "message": "The Windows Error Reporting Service service entered the running state."
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-10-18 23:50:05.910",
+      "record_id": "R000119",
+      "process_id": "4824",
+      "image": "C:\\Windows\\System32\\WerFault.exe",
+      "command_line": "C:\\Windows\\System32\\WerFault.exe -pss -s 468 -p 756 -ip 756",
+      "current_directory": "C:\\Windows\\system32\\",
+      "user": "NT AUTHORITY\\SYSTEM",
+      "integrity_level": "System",
+      "hashes": "SHA1=7662A8D2F23C3474DEC6EF8E2B0365B0B86714EE,MD5=F68AF942FD7CCC0E7BAB1A2335D2AD26,SHA256=11064E9EDC605BD5B0C0A505538A0D5FD7DE53883AF342F091687CAE8628ACD0,IMPHASH=F27A7FC3A53E74F45BE370131953896A",
+      "parent_process_id": "6100",
+      "parent_image": "C:\\Windows\\System32\\svchost.exe",
+      "parent_command_line": "C:\\Windows\\System32\\svchost.exe -k WerSvcGroup -p -s WerSvc",
+      "original_file_name": "WERFAULT.EXE"
+    },
+    {
+      "event_id": "Sysmon/7",
+      "event_type": "ImageLoad",
+      "utc_time": "2020-10-18 23:50:05.947",
+      "record_id": "R000131",
+      "process_id": "4824",
+      "image": "C:\\Windows\\System32\\WerFault.exe",
+      "image_loaded": "C:\\Windows\\System32\\faultrep.dll",
+      "signed": "true",
+      "signature": "Microsoft Windows",
+      "signature_status": "Valid",
+      "company": "Microsoft Corporation",
+      "description": "Windows Error Reporting Submission DLL",
+      "hashes": "SHA1=36FEF94305510994A6D390CD54235E8146A4CB83,MD5=4497582A91B3B284661143010AE35D57,SHA256=83C7AF7FF1B4AAFD983A8C3B0EAD10391C1A195CAD3CE59DA04747CDC931B066,IMPHASH=EADBCCBB324829ACB5F2BBE87E5549A8"
+    },
+    {
+      "event_id": "Sysmon/10",
+      "event_type": "ProcessAccess",
+      "utc_time": "2020-10-18 23:50:05.963",
+      "record_id": "R000142",
+      "source_process_id": "4824",
+      "source_image": "C:\\Windows\\System32\\WerFault.exe",
+      "target_process_id": "756",
+      "target_image": "C:\\windows\\system32\\lsass.exe",
+      "granted_access": "0x1410",
+      "call_trace": "C:\\windows\\SYSTEM32\\ntdll.dll+9c584|C:\\windows\\System32\\KERNELBASE.dll+305fe|C:\\Windows\\System32\\faultrep.dll+3c56f|C:\\Windows\\System32\\WerFault.exe+3bcf|C:\\Windows\\System32\\WerFault.exe+62d9|C:\\windows\\System32\\KERNEL32.DLL+17c24|C:\\windows\\SYSTEM32\\ntdll.dll+6cea1"
+    },
+    {
+      "event_id": "Sysmon/11",
+      "event_type": "FileCreate",
+      "utc_time": "2020-10-18 23:50:05.963",
+      "record_id": "R000141",
+      "process_id": "4824",
+      "image": "C:\\Windows\\System32\\WerFault.exe",
+      "target_filename": "C:\\ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\AppCrash_lsass.exe_9f2b4c1e7a3d\\lsass.exe.756.dmp",
+      "creation_utc_time": "2020-10-18 23:50:05.963"
+    },
+    {
+      "event_id": "Sysmon/7",
+      "event_type": "ImageLoad",
+      "utc_time": "2020-10-18 23:50:05.994",
+      "record_id": "R000149",
+      "process_id": "4824",
+      "image": "C:\\Windows\\System32\\WerFault.exe",
+      "image_loaded": "C:\\Windows\\System32\\dbgcore.dll",
+      "signed": "true",
+      "signature": "Microsoft Windows",
+      "signature_status": "Valid",
+      "company": "Microsoft Corporation",
+      "description": "Windows Core Debugging Helpers",
+      "hashes": "SHA1=108943FBF8312BBB0C9CAC3931C227CD3C60E87C,MD5=AD92544DB12E3B50ECBD9B0F8FF1331F,SHA256=CC7DCCBAE53DD4EF0521A9AD260B5094D91F2C5A631072687279C03281C1579C,IMPHASH=5203F507E4A303D63F015849CE72F6B2"
+    },
+    {
+      "event_id": "Sysmon/10",
+      "event_type": "ProcessAccess",
+      "utc_time": "2020-10-18 23:50:05.994",
+      "record_id": "R000151",
+      "source_process_id": "4824",
+      "source_image": "C:\\Windows\\System32\\WerFault.exe",
+      "target_process_id": "756",
+      "target_image": "C:\\windows\\system32\\lsass.exe",
+      "granted_access": "0x1fffff",
+      "call_trace": "C:\\windows\\SYSTEM32\\ntdll.dll+9c584|C:\\windows\\SYSTEM32\\ntdll.dll+74bf7|C:\\windows\\System32\\KERNEL32.DLL+1c258|C:\\windows\\System32\\KERNEL32.DLL+23278|C:\\windows\\SYSTEM32\\dbgcore.DLL+9447|C:\\windows\\SYSTEM32\\dbgcore.DLL+16185|C:\\windows\\SYSTEM32\\dbgcore.DLL+100a6|C:\\windows\\SYSTEM32\\dbgcore.DLL+613f|C:\\windows\\SYSTEM32\\dbgcore.DLL+6bbc|C:\\Windows\\System32\\faultrep.dll+3c684|C:\\Windows\\System32\\WerFault.exe+3bcf|C:\\Windows\\System32\\WerFault.exe+62d9|C:\\windows\\System32\\KERNEL32.DLL+17c24|C:\\windows\\SYSTEM32\\ntdll.dll+6cea1"
+    },
+    {
+      "event_id": "Application/1001",
+      "event_type": "WindowsErrorReporting",
+      "utc_time": "2020-10-18 23:50:06.410",
+      "record_id": "R000161",
+      "message": "Fault bucket 1234567890123456789, type 4\r\nEvent Name: APPCRASH\r\nResponse: Not available\r\nCab Id: 0\r\n\r\nProblem signature:\r\nP1: lsass.exe\r\nP2: 10.0.18362.1\r\nP3: 8a1c4f21\r\nP4: msv1_0.DLL\r\nP5: 10.0.18362.900\r\nP6: 2b7e10c4\r\nP7: c0000005\r\nP8: 000000000001a3f7\r\n\r\nAttached files:\r\nC:\\ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\AppCrash_lsass.exe_9f2b4c1e7a3d\\lsass.exe.756.dmp\r\n\r\nThese files may be available here:\r\nC:\\ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\AppCrash_lsass.exe_9f2b4c1e7a3d\r\n\r\nAnalysis symbol:\r\nRechecking for solution: 0\r\nReport Id: 9f2b4c1e-7a3d-4e58-b1c0-6d9e4f2a8c53\r\nReport Status: 268435456\r\nHashed bucket: 3f8a1b2c4d5e6f708192a3b4c5d6e7f8"
+    }
+  ],
+  "enrichment": {
+    "wer_mechanism": "Windows Error Reporting handles application crashes. When a process faults, the WER service (WerSvc, hosted in svchost.exe) launches WerFault.exe with the crashing process's PID, and WerFault opens a handle to that process to capture a memory snapshot for the crash report. Producing a memory dump of the faulting process is the entire purpose of the tool.",
+    "command_line_form": "WerFault.exe -pss -s 468 -p 756 -ip 756 is the standard snapshot invocation: -p and -ip identify the target process (756 = lsass.exe), -s is the shared-memory handle the service passed in, and -pss requests a process snapshot. The PID on the command line was supplied by the service, not chosen by a user.",
+    "crash_precedes_handle": "The Application Error record for lsass.exe is timestamped 0.151 seconds BEFORE the ProcessAccess alert. The ordering matters: the handle is a consequence of the crash. In a credential-theft case the handle comes first and no crash is recorded at all.",
+    "call_trace_note": "The alerting CallTrace resolves entirely to signed, on-disk Microsoft modules (ntdll.dll, KERNEL32.DLL, dbgcore.DLL, faultrep.dll). There is no UNKNOWN frame and no unbacked memory, so no reflectively-loaded code participated in the read.",
+    "identity_and_parent": "WerFault.exe runs as NT AUTHORITY\\SYSTEM at System integrity, in terminal session 0, with svchost.exe -k WerSvcGroup as its parent. No interactive user account and no user session appears anywhere in the chain.",
+    "dump_location": "The dump was written to C:\\ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\AppCrash_lsass.exe_9f2b4c1e7a3d\\lsass.exe.756.dmp \u2014 the standard WER report queue, a system-managed directory that WER creates, populates and later purges. Contrast a user-writable staging path such as AppData\\Local\\Temp.",
+    "report_closure": "The Windows Error Reporting record 1001 that follows names the same Report Id as the crash record and lists the same dump path as an attached file, closing the loop between crash, dump and report."
+  }
+}

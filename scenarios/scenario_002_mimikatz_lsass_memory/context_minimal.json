@@ -1,0 +1,39 @@
+{
+  "case_id": "CASE-5D041AA1",
+  "environment": {
+    "host": "WKS-4471",
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain_role": "domain-joined workstation (CORP)",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-CRED-001",
+    "rule_name": "LSASS Process Memory Read via Suspicious Handle",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "description": "A process obtained a handle to lsass.exe with access rights permitting memory reads (PROCESS_VM_READ). LSASS holds plaintext credentials, hashes, and Kerberos tickets in memory; non-security-tooling reads of LSASS are a high-fidelity indicator of credential theft, independent of the dumping tool used.",
+    "detection_logic": "Sysmon EventID=10 (ProcessAccess) WHERE TargetImage ENDSWITH '\\lsass.exe' AND GrantedAccess IN (0x1010,0x1038,0x1410,0x1438,0x143a,0x1fffff) AND SourceImage NOT IN (known_security_tooling) AND SourceImage NOT IN (wininit.exe, csrss.exe, services.exe, MsMpEng.exe)",
+    "data_source": "Sysmon Operational (EventID 10)",
+    "fired_at": "2020-08-07T14:32:56.540Z",
+    "trigger_count": 1,
+    "host": "WKS-4471"
+  },
+  "context_tier": "minimal",
+  "telemetry": [
+    {
+      "event_id": "Sysmon/10",
+      "event_type": "ProcessAccess",
+      "utc_time": "2020-08-07 14:32:56.540",
+      "record_id": "R002355",
+      "source_process_id": "1648",
+      "source_image": "C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "target_process_id": "768",
+      "target_image": "C:\\windows\\system32\\lsass.exe",
+      "granted_access": "0x1010",
+      "call_trace": "C:\\windows\\SYSTEM32\\ntdll.dll+9c534|C:\\windows\\System32\\KERNELBASE.dll+2726e|UNKNOWN(000002EE319439BF)"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "case_id": "CASE-B387C9A8",
+  "environment": {
+    "hosts": [
+      "DC01 (domain controller, 10.24.8.10)",
+      "WKS-4471 (10.24.8.21)"
+    ],
+    "os": "Windows Server 2019 / Windows 10",
+    "domain": "CORP.EXAMPLE",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing (Directory Service Access)"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-CRED-006",
+    "rule_name": "Directory Replication Rights Exercised by Non-DC Principal",
+    "severity": "critical",
+    "analyst_priority": "P1",
+    "description": "A security principal that is not a domain controller invoked the directory replication service (DRSUAPI DsGetNCChanges) against the domain naming context. Replication rights allow an account to request the password hash of any principal in the domain, including krbtgt, without ever touching a domain controller's disk or memory.",
+    "detection_logic": "Security EventID=4662 WHERE ObjectType = '{19195a5b-6da0-11d0-afd3-00c04fd930c9}' (domainDNS) AND Properties CONTAINS ANY ('{1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}' /* DS-Replication-Get-Changes */, '{1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}' /* DS-Replication-Get-Changes-All */) AND SubjectUserName NOT IN (domain_controller_computer_accounts) AND SubjectUserName NOT IN (approved_replication_service_accounts)",
+    "data_source": "Windows Security Auditing (EventID 4662) on DC01",
+    "fired_at": "2020-08-05T06:10:03.798Z",
+    "trigger_count": 3,
+    "host": "DC01"
+  },
+  "context_tier": "minimal",
+  "telemetry": [
+    {
+      "event_id": "Security/4662",
+      "event_type": "DirectoryServiceAccess",
+      "utc_time": "2020-08-05 06:10:03.798",
+      "record_id": "R000142",
+      "host": "DC01",
+      "subject_user_name": "j.marsh",
+      "subject_domain_name": "CORP",
+      "logon_id": "0x824909",
+      "object_name": "%{3933c65d-ac7f-4c79-b5b7-ad0fb941333c}",
+      "object_type": "%{19195a5b-6da0-11d0-afd3-00c04fd930c9}",
+      "properties": "%%7688\r\n\t\t{1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}\r\n\t{19195a5b-6da0-11d0-afd3-00c04fd930c9}\r\n",
+      "access_mask": "0x100"
+    },
+    {
+      "event_id": "Security/4662",
+      "event_type": "DirectoryServiceAccess",
+      "utc_time": "2020-08-05 06:10:03.799",
+      "record_id": "R000143",
+      "host": "DC01",
+      "subject_user_name": "j.marsh",
+      "subject_domain_name": "CORP",
+      "logon_id": "0x824909",
+      "object_name": "%{3933c65d-ac7f-4c79-b5b7-ad0fb941333c}",
+      "object_type": "%{19195a5b-6da0-11d0-afd3-00c04fd930c9}",
+      "properties": "%%7688\r\n\t\t{1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}\r\n\t{19195a5b-6da0-11d0-afd3-00c04fd930c9}\r\n",
+      "access_mask": "0x100"
+    },
+    {
+      "event_id": "Security/4662",
+      "event_type": "DirectoryServiceAccess",
+      "utc_time": "2020-08-05 06:10:03.799",
+      "record_id": "R000144",
+      "host": "DC01",
+      "subject_user_name": "j.marsh",
+      "subject_domain_name": "CORP",
+      "logon_id": "0x824909",
+      "object_name": "%{3933c65d-ac7f-4c79-b5b7-ad0fb941333c}",
+      "object_type": "%{19195a5b-6da0-11d0-afd3-00c04fd930c9}",
+      "properties": "%%7688\r\n\t\t{1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}\r\n\t{19195a5b-6da0-11d0-afd3-00c04fd930c9}\r\n",
+      "access_mask": "0x100"
+    }
+  ]
+}

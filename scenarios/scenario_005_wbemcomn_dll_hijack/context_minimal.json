@@ -1,0 +1,43 @@
+{
+  "case_id": "CASE-11F486B1",
+  "environment": {
+    "hosts": [
+      "WKS-4471 (source, 10.24.8.21)",
+      "WKS-4472 (target)"
+    ],
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain": "CORP.EXAMPLE",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing (File Share auditing)"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-LATMOV-001",
+    "rule_name": "Unsigned Module Loaded by WMI Provider Host",
+    "severity": "critical",
+    "analyst_priority": "P1",
+    "description": "WmiPrvSE.exe, the WMI provider host, loaded a module that failed signature validation. WmiPrvSE runs as a service identity and is instantiated on demand by remote WMI requests, so an unsigned module loaded into it executes attacker code on the target host under a service account, triggered from another machine.",
+    "detection_logic": "Sysmon EventID=7 (ImageLoad) WHERE Image ENDSWITH '\\WmiPrvSE.exe' AND Signed = 'false' AND ImageLoaded NOT IN (approved_unsigned_provider_allowlist)",
+    "data_source": "Sysmon Operational (EventID 7) on WKS-4472",
+    "fired_at": "2020-10-09T21:34:58.195Z",
+    "trigger_count": 1,
+    "host": "WKS-4472"
+  },
+  "context_tier": "minimal",
+  "telemetry": [
+    {
+      "event_id": "Sysmon/7",
+      "event_type": "ImageLoad",
+      "utc_time": "2020-10-09 21:34:58.195",
+      "record_id": "R000665",
+      "host": "WKS-4472",
+      "process_id": "8364",
+      "image": "C:\\Windows\\System32\\wbem\\WmiPrvSE.exe",
+      "image_loaded": "C:\\Windows\\System32\\wbem\\wbemcomn.dll",
+      "signed": "false",
+      "signature_status": "Unavailable",
+      "hashes": "SHA1=ACCD19BB9F4B6780F3562C86BCED60190B5ADDD8,MD5=5AEF3D8F01A19A3C69958FB6748B0744,SHA256=5CFFEEBC4BE60D76E6A38B6C41E3BA993C47FB125B7B1DF5C2ED9A7F4F7B9D16,IMPHASH=E7129F83FB101A6ABDCBCDBC693723D8"
+    }
+  ]
+}

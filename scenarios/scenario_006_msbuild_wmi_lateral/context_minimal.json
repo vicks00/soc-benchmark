@@ -1,0 +1,47 @@
+{
+  "case_id": "CASE-CDC6E4DD",
+  "environment": {
+    "hosts": [
+      "WKS-4471 (source)",
+      "WKS-4472 (target)"
+    ],
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain": "CORP.EXAMPLE",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing (File Share auditing)"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-EXEC-001",
+    "rule_name": "MSBuild Executed a Project File From a Non-Development Path",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "description": "MSBuild.exe executed a project file located outside any recognised source-code or build-agent path. MSBuild is a signed Microsoft binary that will compile and run arbitrary C# supplied inline in a project file, so it is used to execute code on hosts where unsigned binaries would be blocked or noticed.",
+    "detection_logic": "Sysmon EventID=1 (ProcessCreate) WHERE Image ENDSWITH '\\MSBuild.exe' AND CommandLine MATCHES '\\.(xml|csproj|proj|targets)' AND CommandLine NOT MATCHES ANY (source_root_paths, build_agent_paths, '\\\\Program Files')",
+    "data_source": "Sysmon Operational (EventID 1) on WKS-4472",
+    "fired_at": "2020-09-20T21:39:24.350Z",
+    "trigger_count": 1,
+    "host": "WKS-4472"
+  },
+  "context_tier": "minimal",
+  "telemetry": [
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-09-20 21:39:24.350",
+      "record_id": "R000993",
+      "host": "WKS-4472",
+      "image": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe",
+      "command_line": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe  C:\\Windows\\Tasks\\pshell.xml",
+      "current_directory": "C:\\windows\\system32\\",
+      "user": "CORP\\j.marsh",
+      "integrity_level": "High",
+      "hashes": "SHA1=1B0FF94983178D3017B00432D34F95F404BA34E0,MD5=6C5B12051E88BE8CF20FB82834ECCDD3,SHA256=FC060CED6B0C7D0AADA14CCDE223D3EB7DD31C9861B3FD34816C948483702B38,IMPHASH=00000000000000000000000000000000",
+      "parent_process_id": "6952",
+      "parent_image": "C:\\Windows\\System32\\cmd.exe",
+      "parent_command_line": "cmd.exe /c C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe C:\\Windows\\Tasks\\pshell.xml",
+      "original_file_name": "MSBuild.exe"
+    }
+  ]
+}

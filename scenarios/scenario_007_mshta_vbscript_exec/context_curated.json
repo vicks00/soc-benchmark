@@ -1,0 +1,99 @@
+{
+  "case_id": "CASE-AB34329E",
+  "environment": {
+    "host": "WKS-4471",
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain_role": "workstation",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-EVASION-005",
+    "rule_name": "mshta.exe Executed Inline Script Without an HTA File",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "description": "mshta.exe was invoked with a vbscript: or javascript: URI on its command line rather than a path to an .hta file. In that form mshta acts as a general-purpose script interpreter, which is used to run code under the identity of a signed Microsoft binary and to bypass application-control policies that permit mshta.exe.",
+    "detection_logic": "Sysmon EventID=1 (ProcessCreate) WHERE Image ENDSWITH '\\mshta.exe' AND CommandLine MATCHES ANY ('vbscript:', 'javascript:', 'about:') AND CommandLine NOT MATCHES '\\.hta'",
+    "data_source": "Sysmon Operational (EventID 1)",
+    "fired_at": "2020-10-22T06:57:59.855Z",
+    "trigger_count": 1,
+    "host": "WKS-4471"
+  },
+  "context_tier": "curated",
+  "telemetry": [
+    {
+      "event_id": "Security/4688",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-10-22 02:57:59.856",
+      "record_id": "R000006",
+      "process_id": "0x2ae4",
+      "image": "C:\\Windows\\System32\\mshta.exe",
+      "command_line": "mshta  vbscript:Execute(\"CreateObject(\"\"Wscript.Shell\"\").Run \"\"powershell -noexit -command Get-Service sysmon\"\":close\")",
+      "parent_image": "C:\\Windows\\System32\\cmd.exe",
+      "subject_user_name": "t.okafor",
+      "subject_domain_name": "WKS-4471",
+      "token_elevation_type": "%%1936",
+      "mandatory_label": "S-1-16-12288"
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-10-22 06:57:59.855",
+      "record_id": "R000284",
+      "process_id": "10980",
+      "image": "C:\\Windows\\System32\\mshta.exe",
+      "command_line": "mshta  vbscript:Execute(\"CreateObject(\"\"Wscript.Shell\"\").Run \"\"powershell -noexit -command Get-Service sysmon\"\":close\")",
+      "current_directory": "C:\\Users\\t.okafor\\",
+      "user": "WKS-4471\\t.okafor",
+      "integrity_level": "High",
+      "hashes": "SHA1=99A0A1B05E60A5F1FC8A068F953F0510E0230EFA,MD5=7C5C45D9F45694521548E99BA5D4E535,SHA256=229EBBA62347B77EA2FFAD93308E7052BDAE39A24EA828D6EF93FE694CA62197,IMPHASH=42DA177DE2FAA97C3DFAEC9562772A7F",
+      "parent_process_id": "5888",
+      "parent_image": "C:\\Windows\\System32\\cmd.exe",
+      "parent_command_line": "\"C:\\windows\\system32\\cmd.exe\" ",
+      "original_file_name": "MSHTA.EXE"
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-10-22 06:58:00.462",
+      "record_id": "R000422",
+      "process_id": "9572",
+      "image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "command_line": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -noexit -command Get-Service sysmon",
+      "current_directory": "C:\\Users\\t.okafor\\",
+      "user": "WKS-4471\\t.okafor",
+      "integrity_level": "High",
+      "hashes": "SHA1=36C5D12033B2EAF251BAE61C00690FFB17FDDC87,MD5=CDA48FC75952AD12D99E526D0B6BF70A,SHA256=908B64B1971A979C7E3E8CE4621945CBA84854CB98D76367B791A6E22B5F6D53,IMPHASH=A7CEFACDDA74B13CD330390769752481",
+      "parent_process_id": "10980",
+      "parent_image": "C:\\Windows\\System32\\mshta.exe",
+      "parent_command_line": "mshta  vbscript:Execute(\"CreateObject(\"\"Wscript.Shell\"\").Run \"\"powershell -noexit -command Get-Service sysmon\"\":close\")",
+      "original_file_name": "PowerShell.EXE"
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-10-22 06:58:00.568",
+      "record_id": "R000445",
+      "process_id": "10164",
+      "image": "C:\\Windows\\System32\\conhost.exe",
+      "command_line": "\\??\\C:\\windows\\system32\\conhost.exe 0xffffffff -ForceV1",
+      "current_directory": "C:\\windows",
+      "user": "WKS-4471\\t.okafor",
+      "integrity_level": "High",
+      "hashes": "SHA1=11996F32DD85863A8C3BFF6D520F788A9211C8F7,MD5=C5E9B1D1103EDCEA2E408E9497A5A88F,SHA256=BAF97B2A629723947539CFF84E896CD29565AB4BB68B0CEC515EB5C5D6637B69,IMPHASH=F8DD0EF565DE87D97ABF9C62EA63EC21",
+      "parent_process_id": "9572",
+      "parent_image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "parent_command_line": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -noexit -command Get-Service sysmon",
+      "original_file_name": "CONHOST.EXE"
+    }
+  ],
+  "enrichment": {
+    "technique_note": "mshta.exe launched with a 'vbscript:Execute(...)' URI executes the supplied script directly. There is no .hta file on disk and no remote URL in this invocation, so there is no downloaded artifact to analyse \u2014 everything the process did is on its command line.",
+    "command_chain": "mshta.exe creates a Wscript.Shell COM object and calls .Run on it, which spawns powershell.exe. The observed lineage is cmd.exe -> mshta.exe -> powershell.exe -> conhost.exe.",
+    "payload_content": "The command the payload actually runs is 'powershell -noexit -command Get-Service sysmon'. Get-Service queries the state of a named Windows service; 'sysmon' is the endpoint telemetry agent. The command reads service state and does not stop, disable, reconfigure or delete anything. -noexit leaves the console open, which is characteristic of a human running a command interactively rather than an automated implant.",
+    "what_is_absent": "Within the captured window there are no outbound network connections, no DNS queries, no files written outside normal process working paths, no registry persistence writes, no service or scheduled-task creation, and no access to credential stores. The process tree terminates at the PowerShell console.",
+    "account_and_parent": "The user is WKS-4471\\t.okafor, a local account, and the parent is an interactive cmd.exe session \u2014 consistent with someone typing at the console rather than remote or automated execution."
+  }
+}

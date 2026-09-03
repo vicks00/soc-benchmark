@@ -1,0 +1,217 @@
+{
+  "verdict": {
+    "classification": "Malicious",
+    "recommended_action": "Escalate for Investigation",
+    "severity": "High",
+    "mitre_techniques": [
+      "T1003.001"
+    ],
+    "terminal_action_allowed": false,
+    "rationale": "The provided telemetry directly links a high-integrity rundll32 process to a comsvcs MiniDump command targeting LSASS PID 756, memory-capable LSASS handles, dump-related DLL loads, and creation of lsass-comsvcs.dmp. This is a completed LSASS memory-dump chain that warrants urgent SOC escalation; the evidence-bounded SOC reference does not authorize endpoint isolation.",
+    "acceptable_alternatives": []
+  },
+  "observations": [
+    {
+      "id": "O1",
+      "desc": "Sysmon recorded high-integrity rundll32.exe PID 4824, parented by powershell.exe, with a command line invoking comsvcs.dll MiniDump for PID 756 and output path C:\\Users\\t.okafor\\AppData\\Local\\Temp\\lsass-comsvcs.dmp.",
+      "event_refs": [
+        "Microsoft-Windows-Sysmon/Operational EventID 1 @ 2020-10-18 23:50:05.910"
+      ],
+      "any": [
+        "rundll32",
+        "comsvcs",
+        "minidump",
+        "4824",
+        "756"
+      ],
+      "record_refs": [
+        "R000117"
+      ]
+    },
+    {
+      "id": "O2",
+      "desc": "The same rundll32 process loaded comsvcs.dll, dbgcore.dll, and dbghelp.dll.",
+      "event_refs": [
+        "Microsoft-Windows-Sysmon/Operational EventID 7 @ 2020-10-18 23:50:05.947",
+        "Microsoft-Windows-Sysmon/Operational EventID 7 @ 2020-10-18 23:50:05.994"
+      ],
+      "any": [
+        "comsvcs.dll",
+        "dbgcore.dll",
+        "dbghelp.dll"
+      ],
+      "record_refs": [
+        "R000129",
+        "R000149"
+      ]
+    },
+    {
+      "id": "O3",
+      "desc": "rundll32.exe PID 4824 accessed lsass.exe PID 756 with GrantedAccess 0x1410 and later 0x1FFFFF; the recorded call traces include comsvcs.dll and, for the latter event, dbgcore.dll.",
+      "event_refs": [
+        "Microsoft-Windows-Sysmon/Operational EventID 10 @ 2020-10-18 23:50:05.963",
+        "Microsoft-Windows-Sysmon/Operational EventID 10 @ 2020-10-18 23:50:05.994"
+      ],
+      "any": [
+        "lsass",
+        "0x1410",
+        "0x1fffff",
+        "call trace"
+      ],
+      "record_refs": [
+        "R000140",
+        "R000149"
+      ]
+    },
+    {
+      "id": "O4",
+      "desc": "Sysmon recorded rundll32.exe PID 4824 creating C:\\Users\\t.okafor\\AppData\\Local\\Temp\\lsass-comsvcs.dmp.",
+      "event_refs": [
+        "Microsoft-Windows-Sysmon/Operational EventID 11 @ 2020-10-18 23:50:05.963"
+      ],
+      "any": [
+        "lsass-comsvcs.dmp",
+        "file created",
+        "4824"
+      ],
+      "record_refs": [
+        "R000139"
+      ]
+    }
+  ],
+  "inferences": [
+    {
+      "id": "I1",
+      "desc": "The command, LSASS access, dump-library loads, and output-file creation are collectively consistent with dumping LSASS memory through the comsvcs MiniDump export.",
+      "supports": [
+        "O1",
+        "O2",
+        "O3",
+        "O4"
+      ],
+      "any": [
+        "lsass memory dump",
+        "credential dumping",
+        "comsvcs minidump"
+      ]
+    },
+    {
+      "id": "I2",
+      "desc": "The created dump likely contains sensitive LSASS-resident credential material and creates a high-impact credential-access risk, although extraction or later use of credentials is not visible in the provided chain.",
+      "supports": [
+        "O3",
+        "O4"
+      ],
+      "any": [
+        "credential material",
+        "sensitive",
+        "high impact"
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "type": "host",
+      "value": "WKS-4471",
+      "any": [
+        "wks-4471"
+      ]
+    },
+    {
+      "type": "account",
+      "value": "WKS-4471\\t.okafor",
+      "any": [
+        "t.okafor"
+      ]
+    },
+    {
+      "type": "source_process",
+      "value": "rundll32.exe PID 4824",
+      "any": [
+        "rundll32",
+        "4824"
+      ]
+    },
+    {
+      "type": "target_process",
+      "value": "lsass.exe PID 756",
+      "any": [
+        "lsass",
+        "756"
+      ]
+    },
+    {
+      "type": "file",
+      "value": "C:\\Users\\t.okafor\\AppData\\Local\\Temp\\lsass-comsvcs.dmp",
+      "any": [
+        "lsass-comsvcs.dmp",
+        ".dmp"
+      ]
+    }
+  ],
+  "investigations": [
+    {
+      "id": "P1",
+      "desc": "Confirm with the customer whether this LSASS dump was authorized diagnostic, incident-response, or testing activity and identify the initiating operator.",
+      "any": [
+        "authorized",
+        "change",
+        "operator",
+        "customer"
+      ]
+    },
+    {
+      "id": "P2",
+      "desc": "Acquire and preserve the dump-file metadata, hash, access history, and disposition, and determine whether the file was copied, archived, deleted, or transferred.",
+      "any": [
+        "dump file",
+        "hash",
+        "access history",
+        "transfer"
+      ]
+    },
+    {
+      "id": "P3",
+      "desc": "Review the powershell.exe PID 6100 lineage, command history, script content, and surrounding user logon activity that launched rundll32.exe.",
+      "any": [
+        "powershell",
+        "6100",
+        "lineage",
+        "script"
+      ]
+    },
+    {
+      "id": "P4",
+      "desc": "Hunt WKS-4471 and related hosts for additional LSASS access, credential-dump artifacts, and subsequent authentication activity involving the account.",
+      "any": [
+        "hunt",
+        "lsass",
+        "authentication",
+        "related hosts"
+      ]
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "U1",
+      "desc": "Customer authorization, change-management context, and the business purpose for the dump are unknown.",
+      "any": [
+        "authorization",
+        "change management",
+        "business purpose"
+      ]
+    },
+    {
+      "id": "U2",
+      "desc": "Whether credentials were extracted from the dump, transferred off-host, or used later is not observed in the provided window/chain.",
+      "any": [
+        "credential extraction",
+        "transfer",
+        "later use",
+        "not observed"
+      ]
+    }
+  ],
+  "scenario_id": "scenario_001_lsass_comsvcs",
+  "scenario_family": "clear_malicious"
+}

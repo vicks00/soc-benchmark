@@ -1,0 +1,357 @@
+{
+  "scenario_id": "scenario_008_psexec_svcctl_beacon",
+  "scenario_family": "clear_malicious",
+  "title": "Network-only detection: DCERPC service-control lateral movement followed by a new C2 beacon",
+  "multi_host": true,
+  "source": {
+    "kind": "pcap",
+    "zip": "empire_psexec_dcerpc_tcp_svcctl.zip",
+    "captures": {
+      "WORKSTATION5": "empire_psexec_dcerpc_tcp_svcctl_WORKSTATION5_2020-09-20121608.cap",
+      "WORKSTATION6": "empire_psexec_dcerpc_tcp_svcctl_WORKSTATION6_2020-09-20121608.cap"
+    },
+    "citation": "OTRF Security-Datasets / atomic/windows/lateral_movement/network/empire_psexec_dcerpc_tcp_svcctl",
+    "upstream_path": "datasets/atomic/windows/lateral_movement/network/empire_psexec_dcerpc_tcp_svcctl.zip"
+  },
+  "environment": {
+    "hosts": [
+      "WORKSTATION5 (172.18.39.5)",
+      "WORKSTATION6 (172.18.39.6)",
+      "MORDORDC (172.18.38.5)"
+    ],
+    "domain": "THESHIRE.LOCAL",
+    "telemetry_sources": [
+      "Packet capture at the WORKSTATION5 and WORKSTATION6 network interfaces"
+    ],
+    "_constraint": "This scenario has NO host telemetry. There are no process, file, registry or authentication events available \u2014 only network flows. Endpoint agent coverage does not extend to these hosts."
+  },
+  "alert": {
+    "rule_id": "TNX-LATMOV-T1021-002",
+    "rule_name": "Lateral Movement: Workstation-to-Workstation DCERPC Session on a Service-Control Endpoint",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "mitre_attack": {
+      "tactic": "TA0008 - Lateral Movement",
+      "technique": "T1021.002 - Remote Services: SMB/Windows Admin Shares"
+    },
+    "description": "A workstation opened an RPC endpoint-mapper session to a peer workstation and immediately followed it with a session to the dynamic port returned by that mapper, uploading a payload substantially larger than the response. Workstation-to-workstation RPC on service-control interfaces is the wire signature of remote service creation, a common remote-execution mechanism. Peer workstations normally have no reason to administer one another.",
+    "detection_logic": "NetworkFlow WHERE destination_port = 135 AND source_ip IN workstation_subnet AND destination_ip IN workstation_subnet FOLLOWED WITHIN 5s BY NetworkFlow FROM same source_ip TO same destination_ip ON ephemeral_port WHERE bytes_to_server > 4096",
+    "data_source": "Network sensor (flow records) at the WORKSTATION5 and WORKSTATION6 interfaces",
+    "fired_at": "2020-09-20T16:16:56.520Z",
+    "trigger_count": 1,
+    "host": "WORKSTATION5"
+  },
+  "select": {
+    "minimal": [
+      {
+        "event_id": "NetworkFlow",
+        "where": {
+          "destination_port": "135"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "NetworkFlow",
+        "where": {
+          "destination_port": "49726",
+          "sensor": "WORKSTATION6"
+        },
+        "limit": 1
+      }
+    ],
+    "curated": [
+      {
+        "event_id": "NetworkFlow"
+      }
+    ]
+  },
+  "enrichment": {
+    "rpc_mechanics": "TCP/135 is the RPC endpoint mapper. A client asks it which dynamic port serves a given interface UUID and then connects to that port. The pair of flows to 135 and then to 49726, nine milliseconds apart between the same two hosts, is one logical RPC operation, not two unrelated connections.",
+    "byte_asymmetry": "As recorded at the WORKSTATION6 sensor, the flow to port 49726 carries 8,693 bytes toward the server against 1,454 bytes back. A service-control bind that only queried state would be small and roughly symmetric. An upload of that size on a service-control endpoint is consistent with a service being created and its payload or command line delivered.",
+    "two_sided_capture": "The 135 and 49726 flows appear at both sensors, which confirms the traffic actually reached WORKSTATION6 rather than being dropped in transit. Note the byte counts differ between the two views of the 49726 flow (1,296 vs 8,693 bytes to server) \u2014 the WORKSTATION5 sensor did not capture the full uploaded payload, so the target-side view is the accurate one.",
+    "kerberos_flow": "One second before the RPC, WORKSTATION5 opened a flow to MORDORDC on TCP/88 receiving 1,671 bytes with nothing sent at the application layer in this capture. Port 88 is Kerberos; a service-ticket request for a service principal on the target is what a client does immediately before authenticating to it.",
+    "pre_existing_beacon": "The flow from WORKSTATION5:56495 to 10.10.10.5:80 was already established before the lateral movement and carries 236 packets with a strongly asymmetric byte ratio (5,766 sent, 62,000 received). 10.10.10.5 is outside the internal address ranges used by the hosts in this capture.",
+    "post_movement_beacon": "The decisive record is the last flow: at 16:17:01.658, five seconds after the RPC session, WORKSTATION6 originates its own connection to the same external address and port, 10.10.10.5:80, with the same asymmetric profile. WORKSTATION6 had no prior contact with that address anywhere in the capture.",
+    "interpretation_constraint": "Only network flows are available. Which process opened these sockets, which account authenticated, and what the created service ran cannot be determined from this telemetry and must be listed as requiring endpoint verification."
+  },
+  "gold": {
+    "verdict": {
+      "classification": "Malicious",
+      "recommended_action": "Contain / Isolate Endpoint",
+      "severity": "Critical",
+      "mitre_techniques": [
+        "T1021"
+      ],
+      "terminal_action_allowed": false,
+      "rationale": "The packet sequence shows peer-to-peer RPC endpoint-mapper traffic, an immediate dynamic-port exchange carrying substantial client payload, and then a new connection from the target peer to the same TCP/80 destination already used by the initiating peer. That tightly ordered cross-host pattern is most consistent with remote execution followed by shared command-and-control activity, although packet telemetry alone cannot confirm the RPC interface, service creation, process execution, or destination role.",
+      "acceptable_alternatives": [
+        {
+          "classification": "Suspicious",
+          "recommended_action": "Escalate for Investigation",
+          "severity": "High",
+          "mitre_techniques": [
+            "T1021"
+          ],
+          "rationale": "Suspicious is fully equivalent because O1-O3 (P000157-P000159, P000171-P000173, P000182, P000185, P000190, P000209) establish an RPC exchange with large client payloads but do not decode the interface or operation, while O4-O5 (P000003, P000156, P000246, P000249) do not establish the role of 10.24.9.50. Escalation is required because endpoint attribution and authorization remain unavailable.",
+          "terminal_action_allowed": false
+        }
+      ]
+    },
+    "observations": [
+      {
+        "id": "O1",
+        "desc": "WKS-4471 and WKS-4472 sensors recorded a TCP exchange from 10.24.8.21:56607 to 10.24.8.22:135 beginning at 2020-09-20 16:16:56.519.",
+        "event_refs": [
+          "NetworkPacket 2020-09-20 16:16:56.519 WKS-4472 10.24.8.21:56607 -> 10.24.8.22:135",
+          "NetworkPacket 2020-09-20 16:16:56.520 WKS-4471 10.24.8.21:56607 -> 10.24.8.22:135"
+        ],
+        "any": [
+          "10.24.8.21",
+          "10.24.8.22",
+          "56607",
+          "135",
+          "16:16:56.519"
+        ],
+        "record_refs": [
+          "P000157",
+          "P000158",
+          "P000159"
+        ]
+      },
+      {
+        "id": "O2",
+        "desc": "Nine milliseconds later, both sensors recorded a TCP session from 10.24.8.21:56608 to 10.24.8.22:49726.",
+        "event_refs": [
+          "NetworkPacket 2020-09-20 16:16:56.528 WKS-4472 10.24.8.21:56608 -> 10.24.8.22:49726",
+          "NetworkPacket 2020-09-20 16:16:56.529 WKS-4471 10.24.8.21:56608 -> 10.24.8.22:49726"
+        ],
+        "any": [
+          "49726",
+          "56608",
+          "nine milliseconds",
+          "both sensors"
+        ],
+        "record_refs": [
+          "P000171",
+          "P000172",
+          "P000173"
+        ]
+      },
+      {
+        "id": "O3",
+        "desc": "Target-side packets on the 49726 session include multiple client-to-server payload segments, including 1418, 543, 220, and 1182 bytes, with server-to-client response segments also present.",
+        "event_refs": [
+          "NetworkPacket 2020-09-20 16:16:56.532 WKS-4472 10.24.8.21:56608 -> 10.24.8.22:49726 payload_bytes=1418",
+          "NetworkPacket 2020-09-20 16:16:56.581 WKS-4472 10.24.8.21:56608 -> 10.24.8.22:49726 payload_bytes=1182",
+          "NetworkPacket 2020-09-20 16:16:56.533 WKS-4472 10.24.8.22:49726 -> 10.24.8.21:56608 payload_bytes=261"
+        ],
+        "any": [
+          "1418",
+          "1182",
+          "payload_bytes",
+          "client-to-server",
+          "response"
+        ],
+        "record_refs": [
+          "P000182",
+          "P000185",
+          "P000190",
+          "P000209"
+        ]
+      },
+      {
+        "id": "O4",
+        "desc": "10.24.8.21 exchanged TCP/80 packets with 10.24.9.50 before and during the peer RPC sequence.",
+        "event_refs": [
+          "NetworkPacket 2020-09-20 16:15:29.186 WKS-4471 10.24.8.21:56495 -> 10.24.9.50:80 payload_bytes=172",
+          "NetworkPacket 2020-09-20 16:16:56.510 WKS-4471 10.24.8.21:56495 -> 10.24.9.50:80"
+        ],
+        "any": [
+          "10.24.9.50",
+          "56495",
+          "port 80",
+          "before",
+          "during"
+        ],
+        "record_refs": [
+          "P000003",
+          "P000156"
+        ]
+      },
+      {
+        "id": "O5",
+        "desc": "At 16:17:01.658, 10.24.8.22 initiated a separate TCP connection to 10.24.9.50:80 and sent a 201-byte payload after the handshake.",
+        "event_refs": [
+          "NetworkPacket 2020-09-20 16:17:01.658 WKS-4472 10.24.8.22:63854 -> 10.24.9.50:80 SYN",
+          "NetworkPacket 2020-09-20 16:17:01.661 WKS-4472 10.24.8.22:63854 -> 10.24.9.50:80 payload_bytes=201"
+        ],
+        "any": [
+          "16:17:01.658",
+          "63854",
+          "201",
+          "initiated",
+          "same destination"
+        ],
+        "record_refs": [
+          "P000246",
+          "P000249"
+        ]
+      }
+    ],
+    "inferences": [
+      {
+        "id": "I1",
+        "desc": "The TCP/135 exchange followed immediately by a session to TCP/49726 is consistent with RPC endpoint mapping and a related dynamic-port RPC operation.",
+        "supports": [
+          "O1",
+          "O2"
+        ],
+        "any": [
+          "endpoint mapper",
+          "dynamic port",
+          "rpc",
+          "related operation"
+        ]
+      },
+      {
+        "id": "I2",
+        "desc": "The amount and direction of dynamic-port payload are consistent with a state-changing remote administration operation, including possible service creation, but the RPC interface and operation are not decoded.",
+        "supports": [
+          "O2",
+          "O3"
+        ],
+        "any": [
+          "remote administration",
+          "service creation",
+          "state-changing",
+          "not decoded"
+        ]
+      },
+      {
+        "id": "I3",
+        "desc": "The shared TCP/80 destination and timing are consistent with a newly established beacon or command-and-control channel on 10.24.8.22 after remote execution.",
+        "supports": [
+          "O4",
+          "O5"
+        ],
+        "any": [
+          "beacon",
+          "command-and-control",
+          "shared destination",
+          "after remote execution"
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "type": "host",
+        "value": "WKS-4471 / 10.24.8.21 (RPC-initiating peer)",
+        "any": [
+          "wks-4471",
+          "10.24.8.21"
+        ]
+      },
+      {
+        "type": "host",
+        "value": "WKS-4472 / 10.24.8.22 (RPC-receiving peer)",
+        "any": [
+          "wks-4472",
+          "10.24.8.22"
+        ]
+      },
+      {
+        "type": "ip",
+        "value": "10.24.9.50:80 (shared network destination)",
+        "any": [
+          "10.24.9.50",
+          "shared network destination"
+        ]
+      },
+      {
+        "type": "port",
+        "value": "TCP/135 and TCP/49726",
+        "any": [
+          "135",
+          "49726"
+        ]
+      }
+    ],
+    "investigations": [
+      {
+        "id": "P1",
+        "desc": "Obtain endpoint process, service, authentication, and file telemetry from both peers for 16:16:56-16:17:02 to identify the socket owners and any service creation or execution.",
+        "any": [
+          "endpoint telemetry",
+          "process",
+          "service",
+          "authentication",
+          "socket owner"
+        ]
+      },
+      {
+        "id": "P2",
+        "desc": "Decode the TCP/135 and TCP/49726 packet payloads to identify the RPC interface UUID and operation numbers.",
+        "any": [
+          "decode",
+          "interface uuid",
+          "operation",
+          "135",
+          "49726"
+        ]
+      },
+      {
+        "id": "P3",
+        "desc": "Determine the asset role and ownership of 10.24.9.50 and inspect the TCP/80 application content and historical connection cadence from both peers.",
+        "any": [
+          "10.24.9.50",
+          "asset role",
+          "ownership",
+          "content",
+          "cadence"
+        ]
+      },
+      {
+        "id": "P4",
+        "desc": "Compare peer-to-peer RPC activity against the environment baseline and check for approved administration at the observed time.",
+        "any": [
+          "baseline",
+          "approved administration",
+          "peer-to-peer",
+          "change"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "id": "U1",
+        "desc": "The processes and accounts responsible for the observed network sessions are unknown because endpoint telemetry is not provided.",
+        "any": [
+          "process",
+          "account",
+          "endpoint telemetry",
+          "unknown"
+        ]
+      },
+      {
+        "id": "U2",
+        "desc": "The RPC interface, requested operations, and whether a service was created or executed are unknown.",
+        "any": [
+          "rpc interface",
+          "operation",
+          "service",
+          "unknown"
+        ]
+      },
+      {
+        "id": "U3",
+        "desc": "The role, ownership, and application content of 10.24.9.50:80 are unknown; the private address must not be assumed to be external.",
+        "any": [
+          "10.24.9.50",
+          "private address",
+          "ownership",
+          "application content"
+        ]
+      }
+    ]
+  }
+}

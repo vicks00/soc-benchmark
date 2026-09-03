@@ -1,0 +1,13 @@
+.env
+# Source captures are fetched on demand; see datasets/README.md.
+datasets/*.zip
+__pycache__/
+*.pyc
+.ruff_cache/
+.DS_Store
+.venv/
+
+.pytest_cache/
+
+# Local scorecards stay off GitHub.
+sweeps/*/

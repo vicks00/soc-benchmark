@@ -1,0 +1,66 @@
+{
+  "case_id": "CASE-89561951",
+  "environment": {
+    "host": "WKS-4471",
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain_role": "domain-joined workstation (CORP)",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-PRIVESC-002",
+    "rule_name": "Auto-Elevating Binary Spawned Interpreter After User-Hive Handler Write",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "description": "A process wrote a shell-open command handler under the current user's HKCU Classes hive and an auto-elevating signed Windows binary subsequently launched a command interpreter. Auto-elevating binaries run at high integrity without a consent prompt; if they resolve a handler from a user-writable hive, an unprivileged process can have its own command executed at high integrity.",
+    "detection_logic": "Sysmon EventID=13 (RegistrySetValue) WHERE TargetObject MATCHES 'HKU\\\\*_Classes\\\\*\\\\Shell\\\\Open\\\\command\\\\*' FOLLOWED WITHIN 60s BY Sysmon EventID=1 (ProcessCreate) WHERE ParentImage IN (auto_elevating_binaries) AND Image IN (cmd.exe, powershell.exe, pwsh.exe, wscript.exe, cscript.exe, mshta.exe)",
+    "data_source": "Sysmon Operational (EventID 12, 13, 1)",
+    "fired_at": "2020-09-04T07:30:14.087Z",
+    "trigger_count": 1,
+    "host": "WKS-4471"
+  },
+  "context_tier": "minimal",
+  "telemetry": [
+    {
+      "event_id": "Sysmon/13",
+      "event_type": "RegistrySetValue",
+      "utc_time": "2020-09-04 07:30:13.135",
+      "record_id": "R000389",
+      "process_id": "1376",
+      "image": "C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "target_object": "HKU\\S-1-5-21-2024000031-2024000032-2024000033-1104_Classes\\ms-settings\\Shell\\Open\\command\\DelegateExecute",
+      "details": "(Empty)",
+      "operation": "SetValue"
+    },
+    {
+      "event_id": "Sysmon/13",
+      "event_type": "RegistrySetValue",
+      "utc_time": "2020-09-04 07:30:13.151",
+      "record_id": "R000392",
+      "process_id": "1376",
+      "image": "C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "target_object": "HKU\\S-1-5-21-2024000031-2024000032-2024000033-1104_Classes\\ms-settings\\Shell\\Open\\command\\(Default)",
+      "details": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoP -NonI -W Hidden -c $x=$((gp HKCU:Software\\Microsoft\\Windows Update).Update); powershell -NoP -NonI -W Hidden -enc $x",
+      "operation": "SetValue"
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-09-04 07:30:14.087",
+      "record_id": "R001072",
+      "process_id": "7820",
+      "image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "command_line": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoP -NonI -W Hidden -c $x=$((gp HKCU:Software\\Microsoft\\Windows Update).Update); powershell -NoP -NonI -W Hidden -enc $x",
+      "current_directory": "C:\\windows\\system32\\",
+      "user": "CORP\\j.marsh",
+      "integrity_level": "High",
+      "hashes": "SHA1=36C5D12033B2EAF251BAE61C00690FFB17FDDC87,MD5=CDA48FC75952AD12D99E526D0B6BF70A,SHA256=908B64B1971A979C7E3E8CE4621945CBA84854CB98D76367B791A6E22B5F6D53,IMPHASH=A7CEFACDDA74B13CD330390769752481",
+      "parent_process_id": "7020",
+      "parent_image": "C:\\Windows\\System32\\fodhelper.exe",
+      "parent_command_line": "\"C:\\windows\\system32\\fodhelper.exe\" ",
+      "original_file_name": "PowerShell.EXE"
+    }
+  ]
+}

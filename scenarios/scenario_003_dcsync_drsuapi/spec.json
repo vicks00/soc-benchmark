@@ -1,0 +1,390 @@
+{
+  "scenario_id": "scenario_003_dcsync_drsuapi",
+  "scenario_family": "customer_context_required",
+  "title": "Directory replication rights exercised by a non-DC principal",
+  "multi_host": true,
+  "source": {
+    "kind": "host",
+    "zip": "covenant_dcsync_dcerpc_drsuapi_DsGetNCChanges.zip",
+    "citation": "OTRF Security-Datasets / atomic/windows/credential_access/host/covenant_dcsync_dcerpc_drsuapi_DsGetNCChanges",
+    "upstream_path": "datasets/atomic/windows/credential_access/host/covenant_dcsync_dcerpc_drsuapi_DsGetNCChanges.zip"
+  },
+  "environment": {
+    "hosts": [
+      "MORDORDC (domain controller, 172.18.38.5)",
+      "WORKSTATION5 (172.18.39.5)"
+    ],
+    "os": "Windows Server 2019 / Windows 10",
+    "domain": "THESHIRE.LOCAL",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing (Directory Service Access)"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-CRED-T1003-006",
+    "rule_name": "Credential Access: Directory Replication Rights Exercised by Non-DC Principal",
+    "severity": "critical",
+    "analyst_priority": "P1",
+    "mitre_attack": {
+      "tactic": "TA0006 - Credential Access",
+      "technique": "T1003.006 - OS Credential Dumping: DCSync"
+    },
+    "description": "A security principal that is not a domain controller invoked the directory replication service (DRSUAPI DsGetNCChanges) against the domain naming context. Replication rights allow an account to request the password hash of any principal in the domain, including krbtgt, without ever touching a domain controller's disk or memory.",
+    "detection_logic": "Security EventID=4662 WHERE ObjectType = '{19195a5b-6da0-11d0-afd3-00c04fd930c9}' (domainDNS) AND Properties CONTAINS ANY ('{1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}' /* DS-Replication-Get-Changes */, '{1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}' /* DS-Replication-Get-Changes-All */) AND SubjectUserName NOT IN (domain_controller_computer_accounts) AND SubjectUserName NOT IN (approved_replication_service_accounts)",
+    "data_source": "Windows Security Auditing (EventID 4662) on MORDORDC",
+    "fired_at": "2020-08-05T06:10:03.798Z",
+    "trigger_count": 3,
+    "host": "MORDORDC"
+  },
+  "select": {
+    "minimal": [
+      {
+        "event_id": "Security/4662",
+        "where": {
+          "subject_user_name": "pgustavo"
+        }
+      }
+    ],
+    "curated": [
+      {
+        "event_id": "Sysmon/3",
+        "where": {
+          "image__contains": "GruntHTTP",
+          "destination_port": "135"
+        }
+      },
+      {
+        "event_id": "Sysmon/3",
+        "where": {
+          "image__contains": "GruntHTTP",
+          "destination_port": "49674"
+        }
+      },
+      {
+        "event_id": "Security/4624",
+        "where": {
+          "target_user_name": "pgustavo"
+        }
+      },
+      {
+        "event_id": "Security/4662",
+        "where": {
+          "subject_user_name": "pgustavo"
+        }
+      },
+      {
+        "event_id": "Security/4624",
+        "where": {
+          "target_user_name": "WORKSTATION6$"
+        },
+        "limit": 1
+      }
+    ],
+    "verbose": {
+      "hosts": [
+        "MORDORDC",
+        "WORKSTATION5"
+      ],
+      "start": "2020-08-05 06:09:58",
+      "end": "2020-08-05 06:10:08",
+      "keep_all_event_ids": [
+        1,
+        3,
+        4624,
+        4662,
+        4672,
+        4769
+      ],
+      "max_per_event_id": 30,
+      "max_events": 300
+    }
+  },
+  "enrichment": {
+    "replication_guids": {
+      "{1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}": "DS-Replication-Get-Changes \u2014 the extended right permitting a principal to request replicated directory data.",
+      "{1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}": "DS-Replication-Get-Changes-All \u2014 extends the above to secret attributes, i.e. password hashes (unicodePwd, ntPwdHistory, supplementalCredentials).",
+      "{19195a5b-6da0-11d0-afd3-00c04fd930c9}": "ObjectType domainDNS \u2014 the domain naming context itself, the root object replication is requested against."
+    },
+    "access_mask_decode": {
+      "0x100": "ACTRL_DS_CONTROL_ACCESS \u2014 exercise of an extended right, not a normal read or write."
+    },
+    "principal_role": "THESHIRE\\pgustavo is an interactive domain user account. It is not a domain controller computer account and not a directory-synchronisation service account. In a healthy domain, the only principals invoking DsGetNCChanges are DC computer accounts replicating with each other, and any explicitly delegated sync accounts (for example Azure AD Connect).",
+    "network_path": "The two connections from WORKSTATION5 to 172.18.38.5 immediately precede the alert: TCP/135 is the RPC endpoint mapper, and TCP/49674 is the dynamically-assigned port the endpoint mapper hands back for the drsuapi interface. This is the wire footprint of a remote DRSUAPI bind.",
+    "source_binary": "The connections originate from C:\\Users\\pgustavo\\Desktop\\GruntHTTP.exe \u2014 an unsigned executable running from a user desktop directory, not from a system or program-files path.",
+    "logon_correlation": "Security/4624 logon ID 0x824909 (network logon, Kerberos, from 172.18.39.5) is the same logon ID recorded on all three 4662 records, tying the replication request back to the WORKSTATION5 session.",
+    "blast_radius": "A successful replication of the domain naming context should be treated as full domain credential compromise, including the krbtgt account. krbtgt compromise enables forged Kerberos ticket-granting tickets, which survive password resets of individual users."
+  },
+  "gold": {
+    "verdict": {
+      "classification": "Suspicious",
+      "recommended_action": "Escalate for Investigation",
+      "severity": "Critical",
+      "mitre_techniques": [
+        "T1003.006"
+      ],
+      "terminal_action_allowed": false,
+      "rationale": "A user-context executable on WKS-4471 connected to DC01 over RPC and the correlated Kerberos network logon exercised both replication extended rights against the domain object. This is a DCSync-like, potentially domain-compromising sequence, but the supplied telemetry also shows highly privileged group membership and provides no customer authorization context or proof that secret data was returned. An evidence-bounded SOC analyst should urgently escalate rather than autonomously contain.",
+      "acceptable_alternatives": [
+        {
+          "classification": "Malicious",
+          "recommended_action": "Escalate for Investigation",
+          "severity": "Critical",
+          "mitre_techniques": [
+            "T1003.006"
+          ],
+          "rationale": "Malicious is fully equivalent because O1 (R000079, R000080) shows a user-Desktop executable initiating the RPC sequence and O3 (R000142, R000143, R000144) records both replication extended rights against the domain object. O4 (R000136) establishes privileged group membership but cannot resolve authorization or negate the DCSync-like tradecraft; escalation remains required.",
+          "terminal_action_allowed": false
+        }
+      ]
+    },
+    "observations": [
+      {
+        "id": "O1",
+        "desc": "Sysmon recorded C:\\Users\\j.marsh\\Desktop\\svcupdate.exe PID 2064 initiating TCP connections from 10.24.8.21 to DC01 at 10.24.8.10 on ports 135 and 49674.",
+        "event_refs": [
+          "Microsoft-Windows-Sysmon/Operational EventID 3, 10.24.8.21:59695 -> 10.24.8.10:135 @ 2020-08-05 06:10:01.065",
+          "Microsoft-Windows-Sysmon/Operational EventID 3, 10.24.8.21:59696 -> 10.24.8.10:49674 @ 2020-08-05 06:10:01.069"
+        ],
+        "any": [
+          "svcupdate.exe",
+          "2064",
+          "135",
+          "49674"
+        ],
+        "record_refs": [
+          "R000079",
+          "R000080"
+        ]
+      },
+      {
+        "id": "O2",
+        "desc": "DC01 recorded a successful Kerberos network logon for CORP\\j.marsh from 10.24.8.21 source port 59696 with logon ID 0x824909 and an elevated token.",
+        "event_refs": [
+          "Security EventID 4624 on DC01, logon ID 0x824909, source 10.24.8.21:59696"
+        ],
+        "any": [
+          "j.marsh",
+          "0x824909",
+          "10.24.8.21",
+          "kerberos"
+        ],
+        "record_refs": [
+          "R000135"
+        ]
+      },
+      {
+        "id": "O3",
+        "desc": "DC01 recorded three successful Security 4662 Control Access events for CORP\\j.marsh under logon ID 0x824909 and ObjectType {19195a5b-6da0-11d0-afd3-00c04fd930c9}; two include property {1131f6aa-9c07-11d1-f79f-00c04fc2dcd2} and one includes {1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}.",
+        "event_refs": [
+          "Security EventID 4662 on DC01, logon ID 0x824909, Properties {1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}",
+          "Security EventID 4662 on DC01, logon ID 0x824909, Properties {1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}"
+        ],
+        "any": [
+          "4662",
+          "0x824909",
+          "1131f6aa",
+          "1131f6ad",
+          "19195a5b"
+        ],
+        "record_refs": [
+          "R000142",
+          "R000143",
+          "R000144"
+        ]
+      },
+      {
+        "id": "O4",
+        "desc": "Security 4627 for logon ID 0x824909 lists CORP\\j.marsh with domain group SIDs ending in 512, 518, and 519, SID S-1-5-32-544, and integrity SID S-1-16-12288.",
+        "event_refs": [
+          "Security EventID 4627 on DC01, logon ID 0x824909"
+        ],
+        "any": [
+          "512",
+          "518",
+          "519",
+          "0x824909",
+          "high integrity"
+        ],
+        "record_refs": [
+          "R000136"
+        ]
+      }
+    ],
+    "inferences": [
+      {
+        "id": "I1",
+        "desc": "The port-135 connection followed by a connection to port 49674 on the DC is consistent with RPC endpoint mapping followed by communication with a dynamically assigned RPC service.",
+        "supports": [
+          "O1"
+        ],
+        "any": [
+          "rpc",
+          "endpoint mapper",
+          "dynamic port"
+        ]
+      },
+      {
+        "id": "I2",
+        "desc": "The 4662 property GUIDs correspond to DS-Replication-Get-Changes and DS-Replication-Get-Changes-All on the domain object, so the correlated sequence is consistent with DCSync-style directory replication access.",
+        "supports": [
+          "O1",
+          "O2",
+          "O3"
+        ],
+        "any": [
+          "dcsync",
+          "replication rights",
+          "get changes all"
+        ]
+      },
+      {
+        "id": "I3",
+        "desc": "The observed group SIDs indicate that j.marsh held powerful directory privileges in this session, making legitimate administrative replication possible but not establishing that this specific activity was authorized.",
+        "supports": [
+          "O4"
+        ],
+        "any": [
+          "privileged account",
+          "administrative",
+          "authorization unknown"
+        ]
+      },
+      {
+        "id": "I4",
+        "desc": "If secret-bearing directory attributes were returned, the potential impact includes broad domain credential exposure; successful hash or secret extraction is not shown by the provided events.",
+        "supports": [
+          "O3"
+        ],
+        "any": [
+          "potential domain exposure",
+          "secret attributes",
+          "not shown"
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "type": "host",
+        "value": "DC01 (10.24.8.10, domain controller)",
+        "any": [
+          "dc01",
+          "10.24.8.10"
+        ]
+      },
+      {
+        "type": "host",
+        "value": "WKS-4471 (10.24.8.21)",
+        "any": [
+          "wks-4471",
+          "10.24.8.21"
+        ]
+      },
+      {
+        "type": "account",
+        "value": "CORP\\j.marsh",
+        "any": [
+          "j.marsh"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "C:\\Users\\j.marsh\\Desktop\\svcupdate.exe PID 2064",
+        "any": [
+          "svcupdate.exe",
+          "2064"
+        ]
+      },
+      {
+        "type": "domain_object",
+        "value": "Directory object type {19195a5b-6da0-11d0-afd3-00c04fd930c9} on CORP.EXAMPLE",
+        "any": [
+          "corp.example",
+          "19195a5b"
+        ]
+      }
+    ],
+    "investigations": [
+      {
+        "id": "P1",
+        "desc": "Confirm with the customer whether CORP\\j.marsh was authorized to perform directory replication at this time and obtain the relevant change, backup, migration, or test record.",
+        "any": [
+          "authorized",
+          "change record",
+          "backup",
+          "test"
+        ]
+      },
+      {
+        "id": "P2",
+        "desc": "Collect and analyze svcupdate.exe, including file hash, signature state, provenance, execution lineage, and endpoint-detection telemetry.",
+        "any": [
+          "svcupdate.exe",
+          "hash",
+          "signature",
+          "provenance"
+        ]
+      },
+      {
+        "id": "P3",
+        "desc": "Review packet, directory-service, and endpoint telemetry to determine the RPC interface and whether replicated secret attributes were actually returned.",
+        "any": [
+          "rpc interface",
+          "packet",
+          "secret attributes",
+          "returned"
+        ]
+      },
+      {
+        "id": "P4",
+        "desc": "Investigate how j.marsh obtained its privileged memberships and review recent changes to replication rights, privileged groups, and account credentials.",
+        "any": [
+          "group membership",
+          "replication rights",
+          "privilege change",
+          "credentials"
+        ]
+      },
+      {
+        "id": "P5",
+        "desc": "Hunt for additional replication-rights events, anomalous Kerberos activity, credential use, and lateral movement associated with j.marsh or WKS-4471.",
+        "any": [
+          "hunt",
+          "kerberos",
+          "lateral movement",
+          "additional replication"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "id": "U1",
+        "desc": "Customer authorization and the approved operational purpose, if any, for this replication activity are unknown.",
+        "any": [
+          "authorization",
+          "operational purpose",
+          "customer context"
+        ]
+      },
+      {
+        "id": "U2",
+        "desc": "The signature state, trust, provenance, and intended function of svcupdate.exe are unknown from the provided telemetry.",
+        "any": [
+          "signature state",
+          "provenance",
+          "svcupdate.exe"
+        ]
+      },
+      {
+        "id": "U3",
+        "desc": "Whether password hashes or other secret attributes were successfully returned, stored, or used is not observed in the provided window/chain.",
+        "any": [
+          "hashes returned",
+          "stored",
+          "used",
+          "not observed"
+        ]
+      }
+    ]
+  }
+}

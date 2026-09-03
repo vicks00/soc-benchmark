@@ -1,0 +1,283 @@
+{
+  "verdict": {
+    "classification": "Malicious",
+    "recommended_action": "Contain / Isolate Endpoint",
+    "severity": "Critical",
+    "mitre_techniques": [
+      "T1574.001",
+      "T1047",
+      "T1021.002",
+      "T1055"
+    ],
+    "terminal_action_allowed": false,
+    "rationale": "The provided chain shows an administrative-share write of wbemcomn.dll from WKS-4471 to WKS-4472, a new WmiPrvSE instance loading the unsigned file from the wbem directory alongside the signed System32 copy, and WmiPrvSE immediately creating and injecting a remote thread into notepad.exe. This combination is sufficient to treat WKS-4472 as compromised without relying on customer authorization or broader estate context.",
+    "acceptable_alternatives": []
+  },
+  "observations": [
+    {
+      "id": "O1",
+      "desc": "On WKS-4472, Security Event 5145 records CORP\\j.marsh from 10.24.8.21 requesting WriteData and other write-capable access to C$\\Windows\\System32\\wbem\\wbemcomn.dll.",
+      "event_refs": [
+        "Security/5145 WKS-4472 RelativeTargetName=Windows\\System32\\wbem\\wbemcomn.dll AccessMask=0x17019f source=10.24.8.21",
+        "Security/5145 WKS-4472 RelativeTargetName=Windows\\System32\\wbem\\wbemcomn.dll AccessMask=0x2"
+      ],
+      "any": [
+        "5145",
+        "j.marsh",
+        "10.24.8.21",
+        "c$",
+        "writedata"
+      ],
+      "record_refs": [
+        "R000453",
+        "R000454"
+      ]
+    },
+    {
+      "id": "O2",
+      "desc": "Sysmon recorded System PID 4 creating C:\\Windows\\System32\\wbem\\wbemcomn.dll on WKS-4472.",
+      "event_refs": [
+        "Sysmon/11 WKS-4472 2020-10-09 21:34:27.028 TargetFilename=C:\\Windows\\System32\\wbem\\wbemcomn.dll Image=System PID=4"
+      ],
+      "any": [
+        "filecreate",
+        "system",
+        "pid 4",
+        "wbemcomn.dll"
+      ],
+      "record_refs": [
+        "R000434"
+      ]
+    },
+    {
+      "id": "O3",
+      "desc": "WKS-4471 ran wmic /node:WKS-4472 os get as CORP\\j.marsh shortly before the target-side provider activity.",
+      "event_refs": [
+        "Sysmon/1 WKS-4471 2020-10-09 21:34:58.007 Image=WMIC.exe CommandLine=wmic /node:WKS-4472 os get"
+      ],
+      "any": [
+        "wmic",
+        "/node",
+        "WKS-4472",
+        "os get"
+      ],
+      "record_refs": [
+        "R000564"
+      ]
+    },
+    {
+      "id": "O4",
+      "desc": "A new WmiPrvSE.exe PID 8364 on WKS-4472 loaded C:\\Windows\\System32\\wbem\\wbemcomn.dll with Signed=false and also loaded the signed Microsoft C:\\Windows\\System32\\wbemcomn.dll.",
+      "event_refs": [
+        "Sysmon/1 WKS-4472 2020-10-09 21:34:58.191 Image=WmiPrvSE.exe PID=8364 User=NT AUTHORITY\\NETWORK SERVICE",
+        "Sysmon/7 WKS-4472 2020-10-09 21:34:58.195 PID=8364 ImageLoaded=C:\\Windows\\System32\\wbem\\wbemcomn.dll Signed=false SHA256=5CFFEEBC4BE60D76E6A38B6C41E3BA993C47FB125B7B1DF5C2ED9A7F4F7B9D16",
+        "Sysmon/7 WKS-4472 2020-10-09 21:34:58.195 PID=8364 ImageLoaded=C:\\Windows\\System32\\wbemcomn.dll Signed=true Signature=Microsoft Windows"
+      ],
+      "any": [
+        "wmiprvse",
+        "signed=false",
+        "signed=true",
+        "wbem\\wbemcomn.dll"
+      ],
+      "record_refs": [
+        "R000654",
+        "R000662",
+        "R000665",
+        "R000666",
+        "R000667"
+      ]
+    },
+    {
+      "id": "O5",
+      "desc": "WmiPrvSE.exe PID 8364 created notepad.exe PID 2580 as NETWORK SERVICE and then created a remote thread in that process; the process-access call trace includes the unsigned wbem-path DLL.",
+      "event_refs": [
+        "Sysmon/1 WKS-4472 2020-10-09 21:34:58.208 ParentImage=WmiPrvSE.exe ParentPID=8364 Image=notepad.exe PID=2580 User=NT AUTHORITY\\NETWORK SERVICE",
+        "Sysmon/10 WKS-4472 2020-10-09 21:34:58.210 SourcePID=8364 TargetPID=2580 CallTrace includes C:\\windows\\system32\\wbem\\wbemcomn.dll",
+        "Sysmon/8 WKS-4472 2020-10-09 21:34:58.210 SourceImage=WmiPrvSE.exe TargetImage=notepad.exe NewThreadId=5260"
+      ],
+      "any": [
+        "notepad",
+        "network service",
+        "createremotethread",
+        "calltrace"
+      ],
+      "record_refs": [
+        "R000672",
+        "R000673",
+        "R000675"
+      ]
+    }
+  ],
+  "inferences": [
+    {
+      "id": "I1",
+      "desc": "The file-create and share-audit records are consistent with wbemcomn.dll being staged remotely to WKS-4472 over SMB by CORP\\j.marsh from WKS-4471.",
+      "supports": [
+        "O1",
+        "O2"
+      ],
+      "any": [
+        "remote",
+        "smb",
+        "staged",
+        "administrative share"
+      ]
+    },
+    {
+      "id": "I2",
+      "desc": "The unsigned same-name DLL in WmiPrvSE's wbem directory, contrasted with the signed System32 module, is consistent with DLL search-order hijacking; signature status alone would not establish this mechanism.",
+      "supports": [
+        "O2",
+        "O4"
+      ],
+      "any": [
+        "search order",
+        "path shadow",
+        "same-name",
+        "signed copy"
+      ]
+    },
+    {
+      "id": "I3",
+      "desc": "The tightly linked remote query, unsigned module load, child creation, DLL-bearing call trace, and remote-thread event demonstrate execution originating from the anomalous provider-host chain and support a malicious compromise determination.",
+      "supports": [
+        "O3",
+        "O4",
+        "O5"
+      ],
+      "any": [
+        "execution",
+        "provider host",
+        "injection",
+        "malicious"
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "type": "host",
+      "value": "WKS-4472",
+      "any": [
+        "WKS-4472"
+      ]
+    },
+    {
+      "type": "host",
+      "value": "WKS-4471",
+      "any": [
+        "WKS-4471",
+        "10.24.8.21"
+      ]
+    },
+    {
+      "type": "account",
+      "value": "CORP\\j.marsh",
+      "any": [
+        "j.marsh"
+      ]
+    },
+    {
+      "type": "file",
+      "value": "C:\\Windows\\System32\\wbem\\wbemcomn.dll",
+      "any": [
+        "wbem\\wbemcomn.dll",
+        "5CFFEEBC4BE60D76E6A38B6C41E3BA993C47FB125B7B1DF5C2ED9A7F4F7B9D16"
+      ]
+    },
+    {
+      "type": "process",
+      "value": "WmiPrvSE.exe PID 8364",
+      "any": [
+        "wmiprvse",
+        "8364"
+      ]
+    },
+    {
+      "type": "process",
+      "value": "notepad.exe PID 2580",
+      "any": [
+        "notepad",
+        "2580"
+      ]
+    }
+  ],
+  "investigations": [
+    {
+      "id": "P1",
+      "desc": "Acquire and analyze the WKS-4472 wbem-path DLL, validate its hash and signer state, and compare it with the signed System32 module.",
+      "any": [
+        "acquire",
+        "hash",
+        "signer",
+        "compare",
+        "system32"
+      ]
+    },
+    {
+      "id": "P2",
+      "desc": "Review the available authentication, share-access, and process telemetry for CORP\\j.marsh and WKS-4471 around the staging and WMI query.",
+      "any": [
+        "authentication",
+        "share access",
+        "j.marsh",
+        "WKS-4471",
+        "timeline"
+      ]
+    },
+    {
+      "id": "P3",
+      "desc": "Collect the WmiPrvSE and notepad process artifacts from WKS-4472 to determine code loaded, thread start context, and subsequent activity.",
+      "any": [
+        "process artifacts",
+        "thread",
+        "memory",
+        "wmiprvse",
+        "notepad"
+      ]
+    },
+    {
+      "id": "P4",
+      "desc": "Ask the customer to validate whether CORP\\j.marsh was expected to perform this specific administrative-share write and remote WMI operation.",
+      "any": [
+        "customer",
+        "authorization",
+        "change record",
+        "expected",
+        "j.marsh"
+      ]
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "U1",
+      "desc": "Customer authorization, maintenance, and testing context for CORP\\j.marsh is unavailable.",
+      "any": [
+        "authorization",
+        "maintenance",
+        "testing",
+        "customer context"
+      ]
+    },
+    {
+      "id": "U2",
+      "desc": "The provenance and full functionality of the unsigned wbem-path DLL are not established by the provided telemetry.",
+      "any": [
+        "provenance",
+        "functionality",
+        "payload",
+        "static analysis"
+      ]
+    },
+    {
+      "id": "U3",
+      "desc": "Activity outside WKS-4471 and WKS-4472 or outside the provided time window is unknown.",
+      "any": [
+        "scope",
+        "other hosts",
+        "outside window"
+      ]
+    }
+  ],
+  "scenario_id": "scenario_005_wbemcomn_dll_hijack",
+  "scenario_family": "clear_malicious"
+}

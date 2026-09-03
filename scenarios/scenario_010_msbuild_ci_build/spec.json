@@ -1,0 +1,681 @@
+{
+  "scenario_id": "scenario_010_msbuild_ci_build",
+  "scenario_family": "ambiguous_dual_use",
+  "title": "MSBuild project execution by a self-hosted CI build agent",
+  "source": {
+    "kind": "derived",
+    "zip": "empire_msbuild_dcerpc_wmi_smb.zip",
+    "citation": "OTRF Security-Datasets / atomic/windows/lateral_movement/host/empire_msbuild_dcerpc_wmi_smb",
+    "upstream_path": "datasets/atomic/windows/lateral_movement/host/empire_msbuild_dcerpc_wmi_smb.zip"
+  },
+  "environment": {
+    "host": "WORKSTATION6",
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain": "THESHIRE.LOCAL",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-EXEC-T1127-001",
+    "rule_name": "Defense Evasion: MSBuild Executed a Project File From a Non-Development Path",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "mitre_attack": {
+      "tactic": "TA0005 - Defense Evasion",
+      "technique": "T1127.001 - Trusted Developer Utilities Proxy Execution: MSBuild"
+    },
+    "description": "MSBuild.exe executed a project file located outside any recognised source-code or build-agent path. MSBuild is a signed Microsoft binary that will compile and run arbitrary C# supplied inline in a project file, so it is used to execute code on hosts where unsigned binaries would be blocked or noticed.",
+    "detection_logic": "Sysmon EventID=1 (ProcessCreate) WHERE Image ENDSWITH '\\MSBuild.exe' AND CommandLine MATCHES '\\.(xml|csproj|proj|targets)' AND CommandLine NOT MATCHES ANY (source_root_paths, build_agent_paths, '\\Program Files')",
+    "data_source": "Sysmon Operational (EventID 1) on WORKSTATION6",
+    "fired_at": "2020-09-20T21:39:24.350Z",
+    "trigger_count": 1,
+    "host": "WORKSTATION6"
+  },
+  "transform": {
+    "remove": [
+      {
+        "EventID": "5145"
+      },
+      {
+        "EventID": "11",
+        "TargetFilename__contains": "Tasks\\pshell.xml"
+      },
+      {
+        "EventID": "1",
+        "CommandLine__contains": "-enc"
+      },
+      {
+        "EventID": "11",
+        "TargetFilename__contains": "PSScriptPolicyTest"
+      },
+      {
+        "EventID": "1",
+        "CommandLine__contains": "conhost.exe"
+      },
+      {
+        "EventID": "1",
+        "Image__contains": "wmiprvse"
+      }
+    ],
+    "replace": [
+      {
+        "where": {
+          "EventID": "1",
+          "CommandLine__contains": "MSBuild.exe",
+          "Image__endswith": "cmd.exe"
+        },
+        "set": {
+          "ParentProcessGuid": "{47c4a8e2-9b1a-5f67-1e02-000000000900}",
+          "ParentProcessId": "6788",
+          "ParentImage": "C:\\agent\\bin\\Agent.Worker.exe",
+          "ParentCommandLine": "\"C:\\agent\\bin\\Agent.Worker.exe\" build 3f9c1a",
+          "AccountName": "svc-build",
+          "Domain": "CORP",
+          "LogonGuid": "{47c4a8e2-8f01-5f67-b14e-2f0000000000}",
+          "LogonId": "0x2f1c4dc"
+        },
+        "pairs": [
+          [
+            "C:\\windows\\system32\\wbem\\wmiprvse.exe -secured -Embedding",
+            "\"C:\\agent\\bin\\Agent.Worker.exe\" build 3f9c1a"
+          ],
+          [
+            "C:\\Windows\\System32\\wbem\\WmiPrvSE.exe",
+            "C:\\agent\\bin\\Agent.Worker.exe"
+          ],
+          [
+            "C:\\windows\\system32\\wbem\\WmiPrvSE.exe",
+            "C:\\agent\\bin\\Agent.Worker.exe"
+          ],
+          [
+            "{d273d0f0-cc0b-5f67-0808-000000000800}",
+            "{47c4a8e2-9b1a-5f67-1e02-000000000900}"
+          ],
+          [
+            "ParentProcessId: 6944",
+            "ParentProcessId: 6788"
+          ]
+        ]
+      },
+      {
+        "where": {
+          "EventID": "4688",
+          "CommandLine__contains": "MSBuild.exe",
+          "NewProcessName__endswith": "cmd.exe"
+        },
+        "set": {
+          "SubjectUserSid": "S-1-5-21-2024000051-2024000052-2024000053-1104",
+          "SubjectUserName": "svc-build",
+          "SubjectDomainName": "CORP",
+          "SubjectLogonId": "0x2f1c4dc",
+          "ProcessId": "0x1a84",
+          "ParentProcessName": "C:\\agent\\bin\\Agent.Worker.exe"
+        },
+        "pairs": [
+          [
+            "Security ID:\t\tS-1-5-20",
+            "Security ID:\t\tS-1-5-21-2024000051-2024000052-2024000053-1104"
+          ],
+          [
+            "Account Name:\t\tWKS-4472$",
+            "Account Name:\t\tsvc-build"
+          ],
+          [
+            "Logon ID:\t\t0x3E4",
+            "Logon ID:\t\t0x2F1C4DC"
+          ],
+          [
+            "Creator Process ID:\t0x1b20",
+            "Creator Process ID:\t0x1a84"
+          ],
+          [
+            "Creator Process Name:\tC:\\Windows\\System32\\wbem\\WmiPrvSE.exe",
+            "Creator Process Name:\tC:\\agent\\bin\\Agent.Worker.exe"
+          ]
+        ]
+      },
+      {
+        "pairs": [
+          [
+            "C:\\Users\\pgustavo\\AppData\\Local\\Temp\\tfmbbev2",
+            "C:\\a\\1\\s\\src\\Contoso.Billing\\obj\\Release"
+          ],
+          [
+            "c:\\Users\\pgustavo\\AppData\\Local\\Temp\\tfmbbev2",
+            "C:\\a\\1\\s\\src\\Contoso.Billing\\obj\\Release"
+          ],
+          [
+            "C:\\Users\\pgustavo\\AppData\\Local\\Temp\\qu22daba",
+            "C:\\a\\1\\s\\src\\Contoso.Billing.Tests\\obj\\Release"
+          ],
+          [
+            "c:\\Users\\pgustavo\\AppData\\Local\\Temp\\qu22daba",
+            "C:\\a\\1\\s\\src\\Contoso.Billing.Tests\\obj\\Release"
+          ],
+          [
+            "tfmbbev2",
+            "Contoso.Billing"
+          ],
+          [
+            "qu22daba",
+            "Contoso.Billing.Tests"
+          ],
+          [
+            "C:\\Windows\\Tasks\\pshell.xml",
+            "C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj"
+          ],
+          [
+            "C:\\Windows\\Tasks\\",
+            "C:\\a\\1\\s\\src\\Contoso.Billing\\"
+          ],
+          [
+            "C:\\Users\\pgustavo",
+            "C:\\Users\\svc-build"
+          ],
+          [
+            "c:\\Users\\pgustavo",
+            "C:\\Users\\svc-build"
+          ],
+          [
+            "pgustavo",
+            "svc-build"
+          ]
+        ]
+      }
+    ],
+    "inject": [
+      {
+        "EventID": 1,
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "RuleName": "-",
+        "Hostname": "WORKSTATION6.theshire.local",
+        "UtcTime": "2020-09-20 21:39:22.914",
+        "TimeCreated": "2020-09-20 21:39:22.919",
+        "ProcessGuid": "{47c4a8e2-9b1a-5f67-1e02-000000000900}",
+        "ProcessId": "6788",
+        "Image": "C:\\agent\\bin\\Agent.Worker.exe",
+        "FileVersion": "2.175.2.0",
+        "Description": "Azure Pipelines Agent Worker",
+        "Product": "Azure Pipelines Agent",
+        "Company": "Microsoft Corporation",
+        "OriginalFileName": "Agent.Worker.exe",
+        "CommandLine": "\"C:\\agent\\bin\\Agent.Worker.exe\" build 3f9c1a",
+        "CurrentDirectory": "C:\\agent\\",
+        "User": "THESHIRE\\svc-build",
+        "LogonGuid": "{47c4a8e2-8f01-5f67-b14e-2f0000000000}",
+        "LogonId": "0x2f1c4dc",
+        "TerminalSessionId": "0",
+        "IntegrityLevel": "High",
+        "Hashes": "SHA1=A1F3C9D27E4B85106D2E7F0C3B94A85D1E6F2074,MD5=C81E4A9F03B25D7168AE9C40F52B3D61,SHA256=6D2A1F87C34E9B05A72F1D8C4E603B9A5F17C82D0E4B96A31F58C7D24B0E9A63,IMPHASH=9B3C1D7E2A48F056",
+        "ParentProcessGuid": "{47c4a8e2-7d20-5f67-0a01-000000000900}",
+        "ParentProcessId": "3416",
+        "ParentImage": "C:\\agent\\bin\\Agent.Listener.exe",
+        "ParentCommandLine": "\"C:\\agent\\bin\\Agent.Listener.exe\" run --startuptype service",
+        "Message": "Process Create:\r\nRuleName: -\r\nUtcTime: 2020-09-20 21:39:22.914\r\nProcessGuid: {47c4a8e2-9b1a-5f67-1e02-000000000900}\r\nProcessId: 6788\r\nImage: C:\\agent\\bin\\Agent.Worker.exe\r\nFileVersion: 2.175.2.0\r\nDescription: Azure Pipelines Agent Worker\r\nProduct: Azure Pipelines Agent\r\nCompany: Microsoft Corporation\r\nOriginalFileName: Agent.Worker.exe\r\nCommandLine: \"C:\\agent\\bin\\Agent.Worker.exe\" build 3f9c1a\r\nCurrentDirectory: C:\\agent\\\r\nUser: THESHIRE\\svc-build\r\nLogonGuid: {47c4a8e2-8f01-5f67-b14e-2f0000000000}\r\nLogonId: 0x2F1C4DC\r\nTerminalSessionId: 0\r\nIntegrityLevel: High\r\nHashes: SHA1=A1F3C9D27E4B85106D2E7F0C3B94A85D1E6F2074,MD5=C81E4A9F03B25D7168AE9C40F52B3D61,SHA256=6D2A1F87C34E9B05A72F1D8C4E603B9A5F17C82D0E4B96A31F58C7D24B0E9A63,IMPHASH=9B3C1D7E2A48F056\r\nParentProcessGuid: {47c4a8e2-7d20-5f67-0a01-000000000900}\r\nParentProcessId: 3416\r\nParentImage: C:\\agent\\bin\\Agent.Listener.exe\r\nParentCommandLine: \"C:\\agent\\bin\\Agent.Listener.exe\" run --startuptype service"
+      },
+      {
+        "EventID": 1,
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "RuleName": "-",
+        "Hostname": "WORKSTATION6.theshire.local",
+        "UtcTime": "2020-09-20 21:39:23.204",
+        "TimeCreated": "2020-09-20 21:39:23.209",
+        "ProcessGuid": "{47c4a8e2-9b3f-5f67-2002-000000000900}",
+        "ProcessId": "6820",
+        "Image": "C:\\Program Files\\Git\\cmd\\git.exe",
+        "FileVersion": "2.28.0.windows.1",
+        "Description": "Git for Windows",
+        "Product": "Git",
+        "Company": "The Git Development Community",
+        "OriginalFileName": "git.exe",
+        "CommandLine": "git checkout --progress --force 3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b",
+        "CurrentDirectory": "C:\\a\\1\\s\\",
+        "User": "THESHIRE\\svc-build",
+        "LogonGuid": "{47c4a8e2-8f01-5f67-b14e-2f0000000000}",
+        "LogonId": "0x2f1c4dc",
+        "TerminalSessionId": "0",
+        "IntegrityLevel": "High",
+        "Hashes": "SHA1=7B2E4C1A93F0D586E1C74A2B90D3F6851E20C7A9,MD5=3E9B7C24A10F58D6924C7E13B0A5F82D,SHA256=B41C7E93A2F05D68417C9E20B3D8A5F61027C4E9B83D50A17F62C9E4D30B8517,IMPHASH=4D8A2E70C193B5F6",
+        "ParentProcessGuid": "{47c4a8e2-9b1a-5f67-1e02-000000000900}",
+        "ParentProcessId": "6788",
+        "ParentImage": "C:\\agent\\bin\\Agent.Worker.exe",
+        "ParentCommandLine": "\"C:\\agent\\bin\\Agent.Worker.exe\" build 3f9c1a",
+        "Message": "Process Create:\r\nRuleName: -\r\nUtcTime: 2020-09-20 21:39:23.204\r\nProcessGuid: {47c4a8e2-9b3f-5f67-2002-000000000900}\r\nProcessId: 6820\r\nImage: C:\\Program Files\\Git\\cmd\\git.exe\r\nFileVersion: 2.28.0.windows.1\r\nDescription: Git for Windows\r\nProduct: Git\r\nCompany: The Git Development Community\r\nOriginalFileName: git.exe\r\nCommandLine: git checkout --progress --force 3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b\r\nCurrentDirectory: C:\\a\\1\\s\\\r\nUser: THESHIRE\\svc-build\r\nLogonGuid: {47c4a8e2-8f01-5f67-b14e-2f0000000000}\r\nLogonId: 0x2F1C4DC\r\nTerminalSessionId: 0\r\nIntegrityLevel: High\r\nHashes: SHA1=7B2E4C1A93F0D586E1C74A2B90D3F6851E20C7A9,MD5=3E9B7C24A10F58D6924C7E13B0A5F82D,SHA256=B41C7E93A2F05D68417C9E20B3D8A5F61027C4E9B83D50A17F62C9E4D30B8517,IMPHASH=4D8A2E70C193B5F6\r\nParentProcessGuid: {47c4a8e2-9b1a-5f67-1e02-000000000900}\r\nParentProcessId: 6788\r\nParentImage: C:\\agent\\bin\\Agent.Worker.exe\r\nParentCommandLine: \"C:\\agent\\bin\\Agent.Worker.exe\" build 3f9c1a"
+      },
+      {
+        "EventID": 11,
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "RuleName": "-",
+        "Hostname": "WORKSTATION6.theshire.local",
+        "UtcTime": "2020-09-20 21:39:23.618",
+        "TimeCreated": "2020-09-20 21:39:23.622",
+        "ProcessGuid": "{47c4a8e2-9b3f-5f67-2002-000000000900}",
+        "ProcessId": "6820",
+        "Image": "C:\\Program Files\\Git\\cmd\\git.exe",
+        "TargetFilename": "C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj",
+        "CreationUtcTime": "2020-09-20 21:39:23.618",
+        "Message": "File created:\r\nRuleName: -\r\nUtcTime: 2020-09-20 21:39:23.618\r\nProcessGuid: {47c4a8e2-9b3f-5f67-2002-000000000900}\r\nProcessId: 6820\r\nImage: C:\\Program Files\\Git\\cmd\\git.exe\r\nTargetFilename: C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj\r\nCreationUtcTime: 2020-09-20 21:39:23.618"
+      },
+      {
+        "EventID": 3,
+        "Channel": "Microsoft-Windows-Sysmon/Operational",
+        "RuleName": "-",
+        "Hostname": "WORKSTATION6.theshire.local",
+        "UtcTime": "2020-09-20 21:39:23.061",
+        "TimeCreated": "2020-09-20 21:39:23.066",
+        "ProcessGuid": "{47c4a8e2-9b1a-5f67-1e02-000000000900}",
+        "ProcessId": "6788",
+        "Image": "C:\\agent\\bin\\Agent.Worker.exe",
+        "User": "THESHIRE\\svc-build",
+        "Protocol": "tcp",
+        "Initiated": "true",
+        "SourceIp": "172.18.39.6",
+        "SourcePort": "51204",
+        "DestinationIp": "13.107.42.20",
+        "DestinationPort": "443",
+        "DestinationHostname": "dev.azure.com",
+        "Message": "Network connection detected:\r\nRuleName: -\r\nUtcTime: 2020-09-20 21:39:23.061\r\nProcessGuid: {47c4a8e2-9b1a-5f67-1e02-000000000900}\r\nProcessId: 6788\r\nImage: C:\\agent\\bin\\Agent.Worker.exe\r\nUser: THESHIRE\\svc-build\r\nProtocol: tcp\r\nInitiated: true\r\nSourceIsIpv6: false\r\nSourceIp: 172.18.39.6\r\nSourcePort: 51204\r\nDestinationIsIpv6: false\r\nDestinationIp: 13.107.42.20\r\nDestinationHostname: dev.azure.com\r\nDestinationPort: 443"
+      }
+    ]
+  },
+  "select": {
+    "minimal": [
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "MSBuild.exe"
+        },
+        "limit": 1
+      }
+    ],
+    "curated": [
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "Agent.Worker.exe"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "Sysmon/3",
+        "where": {
+          "image__endswith": "Agent.Worker.exe"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "git.exe"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "Sysmon/11",
+        "where": {
+          "target_filename__endswith": ".csproj"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "command_line__contains": ".csproj"
+        },
+        "limit": 2
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "csc.exe"
+        },
+        "limit": 2
+      },
+      {
+        "event_id": "Sysmon/11",
+        "where": {
+          "target_filename__endswith": "Contoso.Billing.dll"
+        },
+        "limit": 1
+      }
+    ],
+    "verbose": {
+      "hosts": [
+        "WORKSTATION6"
+      ],
+      "start": "2020-09-20 21:39:22.8",
+      "end": "2020-09-20 21:39:29.2",
+      "drop_event_ids": [
+        800,
+        4103
+      ],
+      "keep_all_event_ids": [
+        1,
+        3,
+        11
+      ],
+      "max_per_event_id": 11,
+      "max_events": 340
+    }
+  },
+  "enrichment": {
+    "workspace_path": "C:\\a\\1\\s is the default working directory of a self-hosted Azure Pipelines agent: 'a' is the agent work root, '1' is the agent's numeric work folder for this pipeline, and 's' is the sources directory. The short path is chosen by the agent to avoid Windows MAX_PATH limits during builds. The detection allowlist covers \\source\\repos and Program Files but not agent work roots, which is why this fired.",
+    "process_lineage": "The chain is Agent.Listener.exe (running as a service) -> Agent.Worker.exe -> cmd.exe -> MSBuild.exe. Agent.Listener is the long-lived agent service; Agent.Worker is the per-job process it forks. There is no remote-execution parent anywhere in the chain.",
+    "source_provenance": "The project file MSBuild consumed was created 0.7 seconds earlier by git.exe, running under the same agent worker, as part of 'git checkout --progress --force 3f9c1a7d\u2026'. Its provenance is a source-control checkout of a specific commit, not a file placed on the host by another machine.",
+    "network_context": "The only outbound connection from the agent is to dev.azure.com on TCP/443 \u2014 the pipeline service the agent polls for work. No connection to an unrecognised address appears in the window.",
+    "compilation_artifacts": "MSBuild spawns csc.exe and cvtres.exe and writes .cs, .dll, .pdb and .cmdline files under the project's own obj\\Release directory. Compiler invocation is not by itself suspicious: it is what a build is. What matters is that the outputs land in the project tree, named after the project, rather than in randomly-named directories under a user's Temp folder.",
+    "account": "THESHIRE\\svc-build is the account the agent service runs as, in terminal session 0. It is a service account, not an interactive user, and the same account owns every process in the chain.",
+    "what_is_absent": "No SMB share writes, no remote process creation, no encoded or hidden-window PowerShell, no unsigned binaries, and no connection to any address outside the expected pipeline endpoint."
+  },
+  "gold": {
+    "verdict": {
+      "classification": "Suspicious",
+      "recommended_action": "Escalate for Investigation",
+      "severity": "Medium",
+      "mitre_techniques": [
+        "T1127.001"
+      ],
+      "terminal_action_allowed": false,
+      "rationale": "The corrected target-host lineage, source-control checkout, agent workspace, and ordinary compiler outputs strongly resemble a CI build. However, an evidence-bounded SOC analyst has no pipeline authorization, change record, repository trust, or project-content validation, and MSBuild can execute inline code from the checked-out project. The activity therefore warrants customer confirmation before closure rather than being labeled benign solely from its intended construction.",
+      "acceptable_alternatives": []
+    },
+    "observations": [
+      {
+        "id": "O1",
+        "desc": "On WKS-4472, Sysmon records Agent.Worker.exe PID 6788 running as CORP\\svc-build in session 0 at 2020-09-20 21:39:22.914, with Agent.Listener.exe as its parent.",
+        "event_refs": [
+          "Sysmon/1 WKS-4472 2020-09-20 21:39:22.914 Agent.Worker.exe PID 6788 parent Agent.Listener.exe PID 3416"
+        ],
+        "any": [
+          "Agent.Worker.exe",
+          "Agent.Listener.exe",
+          "6788",
+          "svc-build",
+          "session 0"
+        ],
+        "record_refs": [
+          "R000548"
+        ]
+      },
+      {
+        "id": "O2",
+        "desc": "Agent.Worker.exe initiated a TCP connection from 10.24.8.22 to 13.107.42.20:443 with DestinationHostname dev.azure.com at 21:39:23.061.",
+        "event_refs": [
+          "Sysmon/3 WKS-4472 2020-09-20 21:39:23.061 Agent.Worker.exe 10.24.8.22:51204 -> 13.107.42.20:443 dev.azure.com"
+        ],
+        "any": [
+          "Sysmon/3",
+          "dev.azure.com",
+          "13.107.42.20",
+          "443",
+          "Agent.Worker.exe"
+        ],
+        "record_refs": [
+          "R000550"
+        ]
+      },
+      {
+        "id": "O3",
+        "desc": "git.exe, parented by Agent.Worker.exe and running as CORP\\svc-build, executed a forced checkout of commit 3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b at 21:39:23.204.",
+        "event_refs": [
+          "Sysmon/1 WKS-4472 2020-09-20 21:39:23.204 git.exe PID 6820 parent Agent.Worker.exe PID 6788 checkout 3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b"
+        ],
+        "any": [
+          "git.exe",
+          "checkout",
+          "3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b",
+          "Agent.Worker.exe"
+        ],
+        "record_refs": [
+          "R000552"
+        ]
+      },
+      {
+        "id": "O4",
+        "desc": "git.exe created C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj at 21:39:23.618.",
+        "event_refs": [
+          "Sysmon/11 WKS-4472 2020-09-20 21:39:23.618 git.exe -> C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj"
+        ],
+        "any": [
+          "Sysmon/11",
+          "git.exe",
+          "C:\\a\\1\\s",
+          "Contoso.Billing.csproj"
+        ],
+        "record_refs": [
+          "R000650"
+        ]
+      },
+      {
+        "id": "O5",
+        "desc": "The build-launching cmd.exe invoked MSBuild.exe against that project, and MSBuild.exe started at 21:39:24.350 under CORP\\svc-build.",
+        "event_refs": [
+          "Sysmon/1 WKS-4472 2020-09-20 21:39:24.176 cmd.exe -> MSBuild.exe C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj",
+          "Sysmon/1 WKS-4472 2020-09-20 21:39:24.350 MSBuild.exe parent cmd.exe"
+        ],
+        "any": [
+          "cmd.exe",
+          "MSBuild.exe",
+          "21:39:24.350",
+          "svc-build",
+          "csproj"
+        ],
+        "record_refs": [
+          "R000951",
+          "R000993"
+        ]
+      },
+      {
+        "id": "O6",
+        "desc": "The subsequent target-host chain includes csc.exe and cvtres.exe and writes Contoso.Billing.dll and Contoso.Billing.pdb under the project's obj\\Release directory.",
+        "event_refs": [
+          "Sysmon/1 WKS-4472 2020-09-20 21:39:26.517 csc.exe parent MSBuild.exe",
+          "Sysmon/11 WKS-4472 2020-09-20 21:39:26.456 C:\\a\\1\\s\\src\\Contoso.Billing\\obj\\Release\\Contoso.Billing.dll",
+          "Sysmon/11 WKS-4472 2020-09-20 21:39:27.255 C:\\a\\1\\s\\src\\Contoso.Billing\\obj\\Release\\Contoso.Billing.pdb"
+        ],
+        "any": [
+          "csc.exe",
+          "cvtres.exe",
+          "obj\\Release",
+          "Contoso.Billing.dll",
+          "Contoso.Billing.pdb"
+        ],
+        "record_refs": [
+          "R001384",
+          "R001394",
+          "R001497"
+        ]
+      }
+    ],
+    "inferences": [
+      {
+        "id": "I1",
+        "desc": "The corrected Agent.Listener -> Agent.Worker -> cmd -> MSBuild lineage, checkout provenance, and project-local compiler outputs are consistent with an automated CI build.",
+        "supports": [
+          "O1",
+          "O3",
+          "O4",
+          "O5",
+          "O6"
+        ],
+        "any": [
+          "automated CI build",
+          "lineage",
+          "checkout provenance",
+          "project-local"
+        ]
+      },
+      {
+        "id": "I2",
+        "desc": "Execution of a checked-out project by MSBuild could also execute inline build tasks, so normal-looking compiler behavior does not establish benign project content.",
+        "supports": [
+          "O4",
+          "O5",
+          "O6"
+        ],
+        "any": [
+          "inline build tasks",
+          "project content",
+          "MSBuild",
+          "does not establish benign"
+        ]
+      },
+      {
+        "id": "I3",
+        "desc": "The provided target-host window does not establish whether commit 3f9c1a7d was approved, whether the job was expected, or whether the agent or repository was compromised.",
+        "supports": [
+          "O1",
+          "O2",
+          "O3"
+        ],
+        "any": [
+          "not establish",
+          "approved",
+          "expected",
+          "compromised",
+          "commit"
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "type": "host",
+        "value": "WKS-4472 / 10.24.8.22",
+        "any": [
+          "WKS-4472",
+          "10.24.8.22"
+        ]
+      },
+      {
+        "type": "account",
+        "value": "CORP\\svc-build",
+        "any": [
+          "CORP\\svc-build",
+          "svc-build"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "C:\\agent\\bin\\Agent.Worker.exe (PID 6788)",
+        "any": [
+          "Agent.Worker.exe",
+          "6788"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe",
+        "any": [
+          "MSBuild.exe",
+          "Framework64"
+        ]
+      },
+      {
+        "type": "file",
+        "value": "C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj",
+        "any": [
+          "Contoso.Billing.csproj",
+          "C:\\a\\1\\s"
+        ]
+      },
+      {
+        "type": "commit",
+        "value": "3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b",
+        "any": [
+          "3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b",
+          "3f9c1a7d"
+        ]
+      }
+    ],
+    "investigations": [
+      {
+        "id": "P1",
+        "desc": "Ask the customer to confirm that WKS-4472, CORP\\svc-build, and build job 3f9c1a were authorized at the observed time.",
+        "any": [
+          "confirm",
+          "authorized",
+          "WKS-4472",
+          "svc-build",
+          "3f9c1a"
+        ]
+      },
+      {
+        "id": "P2",
+        "desc": "Inspect commit 3f9c1a7d and Contoso.Billing.csproj for inline tasks, unusual targets, downloaded content, or post-build execution.",
+        "any": [
+          "inspect commit",
+          "inline tasks",
+          "unusual targets",
+          "downloaded content",
+          "post-build"
+        ]
+      },
+      {
+        "id": "P3",
+        "desc": "Validate the agent registration, listener configuration, and pipeline run metadata against the customer's CI inventory.",
+        "any": [
+          "agent registration",
+          "listener configuration",
+          "pipeline metadata",
+          "CI inventory"
+        ]
+      },
+      {
+        "id": "P4",
+        "desc": "Review target-host activity after 21:39:29.2 for execution of build outputs, persistence, or unexpected network connections.",
+        "any": [
+          "after 21:39:29.2",
+          "build outputs",
+          "persistence",
+          "network connections"
+        ]
+      },
+      {
+        "id": "P5",
+        "desc": "If the job is confirmed, tune the rule using both the approved agent lineage and workspace root rather than a path-only exclusion.",
+        "any": [
+          "tune",
+          "approved agent lineage",
+          "workspace root",
+          "path-only"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "id": "U1",
+        "desc": "Customer authorization and change-management context for this build are unavailable.",
+        "any": [
+          "authorization",
+          "change management",
+          "unavailable",
+          "customer"
+        ]
+      },
+      {
+        "id": "U2",
+        "desc": "The contents and trust status of commit 3f9c1a7d and Contoso.Billing.csproj are unknown.",
+        "any": [
+          "contents",
+          "trust status",
+          "commit",
+          "csproj",
+          "unknown"
+        ]
+      },
+      {
+        "id": "U3",
+        "desc": "Encoded PowerShell, SMB staging, persistence, and unexpected follow-on network activity are not observed in the corrected target-host window; activity outside that window is unknown.",
+        "any": [
+          "not observed in the corrected target-host window",
+          "PowerShell",
+          "SMB",
+          "persistence",
+          "outside"
+        ]
+      }
+    ]
+  }
+}

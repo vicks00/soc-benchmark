@@ -1,0 +1,286 @@
+{
+  "verdict": {
+    "classification": "Benign",
+    "recommended_action": "Close",
+    "severity": "Informational",
+    "mitre_techniques": [],
+    "terminal_action_allowed": true,
+    "rationale": "The provided chain is internally consistent with Windows Error Reporting handling an LSASS crash: an Application Error precedes WerSvc startup, svchost launches WerFault as SYSTEM with a process-snapshot command line for LSASS PID 756, WerFault creates a dump in the WER ReportQueue while opening LSASS, and Application event 1001 records that same dump as an APPCRASH attachment. This explains the alert without requiring credential-dumping intent, while the dump remains sensitive operational data.",
+    "acceptable_alternatives": []
+  },
+  "observations": [
+    {
+      "id": "O1",
+      "desc": "Application event 1000 records lsass.exe faulting with exception 0xc0000005 at 2020-10-18 23:50:05.812.",
+      "event_refs": [
+        "Application/1000 WKS-4471 2020-10-18 23:50:05.812 lsass.exe exception 0xc0000005"
+      ],
+      "any": [
+        "Application/1000",
+        "lsass.exe",
+        "0xc0000005",
+        "23:50:05.812"
+      ],
+      "record_refs": [
+        "R000090"
+      ]
+    },
+    {
+      "id": "O2",
+      "desc": "System event 7036 records the Windows Error Reporting Service entering the running state at 23:50:05.851.",
+      "event_refs": [
+        "System/7036 WKS-4471 2020-10-18 23:50:05.851 Windows Error Reporting Service running"
+      ],
+      "any": [
+        "System/7036",
+        "Windows Error Reporting Service",
+        "running",
+        "23:50:05.851"
+      ],
+      "record_refs": [
+        "R000115"
+      ]
+    },
+    {
+      "id": "O3",
+      "desc": "Sysmon process creation records svchost.exe launching WerFault.exe as NT AUTHORITY\\SYSTEM with command line '-pss -s 468 -p 756 -ip 756' at 23:50:05.910.",
+      "event_refs": [
+        "Sysmon/1 WKS-4471 2020-10-18 23:50:05.910 WerFault.exe PID 4824 parent svchost.exe PID 6100"
+      ],
+      "any": [
+        "Sysmon/1",
+        "WerFault.exe",
+        "svchost.exe",
+        "NT AUTHORITY\\SYSTEM",
+        "-p 756"
+      ],
+      "record_refs": [
+        "R000119"
+      ]
+    },
+    {
+      "id": "O4",
+      "desc": "Sysmon image-load telemetry records faultrep.dll loaded into WerFault.exe at 23:50:05.947.",
+      "event_refs": [
+        "Sysmon/7 WKS-4471 2020-10-18 23:50:05.947 WerFault.exe loaded C:\\Windows\\System32\\faultrep.dll"
+      ],
+      "any": [
+        "Sysmon/7",
+        "faultrep.dll",
+        "WerFault.exe",
+        "23:50:05.947"
+      ],
+      "record_refs": [
+        "R000131"
+      ]
+    },
+    {
+      "id": "O5",
+      "desc": "At 23:50:05.963, WerFault.exe PID 4824 opened lsass.exe PID 756 with GrantedAccess 0x1410 and created lsass.exe.756.dmp under the WER ReportQueue.",
+      "event_refs": [
+        "Sysmon/10 WKS-4471 2020-10-18 23:50:05.963 WerFault.exe PID 4824 -> lsass.exe PID 756 GrantedAccess 0x1410",
+        "Sysmon/11 WKS-4471 2020-10-18 23:50:05.963 C:\\ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\AppCrash_lsass.exe_9f2b4c1e7a3d\\lsass.exe.756.dmp"
+      ],
+      "any": [
+        "Sysmon/10",
+        "Sysmon/11",
+        "0x1410",
+        "ReportQueue",
+        "lsass.exe.756.dmp"
+      ],
+      "record_refs": [
+        "R000141",
+        "R000142"
+      ]
+    },
+    {
+      "id": "O6",
+      "desc": "Application event 1001 records an APPCRASH report for lsass.exe and lists the same ReportQueue dump as an attached file at 23:50:06.410.",
+      "event_refs": [
+        "Application/1001 WKS-4471 2020-10-18 23:50:06.410 APPCRASH lsass.exe attached lsass.exe.756.dmp"
+      ],
+      "any": [
+        "Application/1001",
+        "APPCRASH",
+        "attached files",
+        "lsass.exe.756.dmp",
+        "23:50:06.410"
+      ],
+      "record_refs": [
+        "R000161"
+      ]
+    }
+  ],
+  "inferences": [
+    {
+      "id": "I1",
+      "desc": "The ordering and shared LSASS PID indicate that WerFault's process access and dump creation were consequences of the recorded LSASS crash.",
+      "supports": [
+        "O1",
+        "O2",
+        "O3",
+        "O5"
+      ],
+      "any": [
+        "consequence",
+        "ordering",
+        "same pid",
+        "crash handling"
+      ]
+    },
+    {
+      "id": "I2",
+      "desc": "The service parent, snapshot arguments, fault-reporting module, ReportQueue path, and APPCRASH closure together form a coherent Windows Error Reporting workflow rather than an unexplained LSASS-memory read.",
+      "supports": [
+        "O2",
+        "O3",
+        "O4",
+        "O5",
+        "O6"
+      ],
+      "any": [
+        "coherent",
+        "Windows Error Reporting",
+        "workflow",
+        "snapshot",
+        "ReportQueue"
+      ]
+    },
+    {
+      "id": "I3",
+      "desc": "Credential-theft intent is not supported by the provided chain, though the resulting LSASS dump contains sensitive process memory.",
+      "supports": [
+        "O1",
+        "O3",
+        "O5",
+        "O6"
+      ],
+      "any": [
+        "intent not supported",
+        "sensitive",
+        "process memory",
+        "credential"
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "type": "host",
+      "value": "WKS-4471",
+      "any": [
+        "wks-4471"
+      ]
+    },
+    {
+      "type": "account",
+      "value": "NT AUTHORITY\\SYSTEM",
+      "any": [
+        "NT AUTHORITY\\SYSTEM",
+        "system"
+      ]
+    },
+    {
+      "type": "source_process",
+      "value": "C:\\Windows\\System32\\WerFault.exe (PID 4824)",
+      "any": [
+        "WerFault.exe",
+        "4824"
+      ]
+    },
+    {
+      "type": "target_process",
+      "value": "C:\\Windows\\System32\\lsass.exe (PID 756)",
+      "any": [
+        "lsass.exe",
+        "756"
+      ]
+    },
+    {
+      "type": "file",
+      "value": "C:\\ProgramData\\Microsoft\\Windows\\WER\\ReportQueue\\AppCrash_lsass.exe_9f2b4c1e7a3d\\lsass.exe.756.dmp",
+      "any": [
+        "ReportQueue",
+        "lsass.exe.756.dmp"
+      ]
+    }
+  ],
+  "investigations": [
+    {
+      "id": "P1",
+      "desc": "If the LSASS crash recurs, investigate host reliability and the faulting msv1_0.DLL condition separately from this security alert.",
+      "any": [
+        "recurs",
+        "reliability",
+        "msv1_0.dll",
+        "crash"
+      ]
+    },
+    {
+      "id": "P2",
+      "desc": "Verify that WER retention and access controls protect or remove the LSASS dump because it contains sensitive memory.",
+      "any": [
+        "retention",
+        "access controls",
+        "sensitive memory",
+        "remove",
+        "dump"
+      ]
+    },
+    {
+      "id": "P3",
+      "desc": "Review telemetry immediately before the crash if assurance is needed that the fault was not deliberately induced.",
+      "any": [
+        "before the crash",
+        "deliberately induced",
+        "preceding telemetry",
+        "assurance"
+      ]
+    },
+    {
+      "id": "P4",
+      "desc": "Check for access to or transfer of the dump after creation beyond the provided event chain if data-handling risk must be excluded.",
+      "any": [
+        "dump access",
+        "transfer",
+        "after creation",
+        "beyond",
+        "data handling"
+      ]
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "U1",
+      "desc": "The root cause of the LSASS crash and whether it was naturally occurring or deliberately induced are unknown.",
+      "any": [
+        "root cause",
+        "naturally occurring",
+        "deliberately induced",
+        "unknown"
+      ]
+    },
+    {
+      "id": "U2",
+      "desc": "Access to, retention of, or transfer of the dump after the provided event chain is unknown.",
+      "any": [
+        "access",
+        "retention",
+        "transfer",
+        "after",
+        "unknown"
+      ]
+    },
+    {
+      "id": "U3",
+      "desc": "Follow-on credential use, exfiltration, or persistence is not observed in the provided window; activity outside that window is unknown.",
+      "any": [
+        "not observed in the provided window",
+        "credential use",
+        "exfiltration",
+        "persistence"
+      ]
+    }
+  ],
+  "scenario_id": "scenario_009_werfault_lsass_crashdump",
+  "scenario_family": "benign_control"
+}

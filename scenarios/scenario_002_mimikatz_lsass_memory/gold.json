@@ -1,0 +1,250 @@
+{
+  "verdict": {
+    "classification": "Malicious",
+    "recommended_action": "Escalate for Investigation",
+    "severity": "High",
+    "mitre_techniques": [
+      "T1003.001",
+      "T1059.001",
+      "T1071.001"
+    ],
+    "terminal_action_allowed": false,
+    "rationale": "PowerShell PID 1648 performs reconnaissance, repeatedly connects to the same HTTP endpoint, and then opens LSASS with memory-read rights through a call trace ending at an UNKNOWN address. The combined sequence is strongly consistent with in-memory credential dumping from an active PowerShell implant and requires SOC escalation; the evidence-bounded SOC reference does not authorize containment.",
+    "acceptable_alternatives": []
+  },
+  "observations": [
+    {
+      "id": "O1",
+      "desc": "Sysmon recorded powershell.exe PID 1648 accessing lsass.exe PID 768 with GrantedAccess 0x1010; the call trace ends with UNKNOWN(000002EE319439BF).",
+      "event_refs": [
+        "Microsoft-Windows-Sysmon/Operational EventID 10 @ 2020-08-07 14:32:56.540"
+      ],
+      "any": [
+        "lsass",
+        "0x1010",
+        "unknown",
+        "1648"
+      ],
+      "record_refs": [
+        "R002355"
+      ]
+    },
+    {
+      "id": "O2",
+      "desc": "The same PowerShell PID 1648 initiated TCP connections from 10.24.8.21 to 10.24.9.50:80 at 14:32:45.731, 14:32:51.140, 14:32:56.281, and 14:33:01.485.",
+      "event_refs": [
+        "Microsoft-Windows-Sysmon/Operational EventID 3 @ 2020-08-07 14:32:45.731",
+        "Microsoft-Windows-Sysmon/Operational EventID 3 @ 2020-08-07 14:32:51.140",
+        "Microsoft-Windows-Sysmon/Operational EventID 3 @ 2020-08-07 14:32:56.281",
+        "Microsoft-Windows-Sysmon/Operational EventID 3 @ 2020-08-07 14:33:01.485"
+      ],
+      "any": [
+        "10.24.9.50",
+        "port 80",
+        "1648",
+        "outbound"
+      ],
+      "record_refs": [
+        "R000137",
+        "R001150",
+        "R001986",
+        "R003475"
+      ]
+    },
+    {
+      "id": "O3",
+      "desc": "PowerShell PID 1648 created whoami.exe PID 6504 with command line \"whoami.exe\" /user shortly before the LSASS access.",
+      "event_refs": [
+        "Microsoft-Windows-Sysmon/Operational EventID 1 @ 2020-08-07 14:32:45.881"
+      ],
+      "any": [
+        "powershell",
+        "whoami",
+        "/user",
+        "6504"
+      ],
+      "record_refs": [
+        "R000152"
+      ]
+    }
+  ],
+  "inferences": [
+    {
+      "id": "I1",
+      "desc": "GrantedAccess 0x1010 gives the PowerShell process query and memory-read capability against LSASS, making credential-memory access a likely purpose of the handle.",
+      "supports": [
+        "O1"
+      ],
+      "any": [
+        "memory read",
+        "credential access",
+        "process vm read"
+      ]
+    },
+    {
+      "id": "I2",
+      "desc": "The UNKNOWN call-trace address is consistent with code executing from a region not resolved to a named module, including a possible reflectively or otherwise memory-loaded component; telemetry alone does not prove the loading method.",
+      "supports": [
+        "O1"
+      ],
+      "any": [
+        "unknown address",
+        "memory-loaded",
+        "reflective",
+        "possible"
+      ]
+    },
+    {
+      "id": "I3",
+      "desc": "The repeated same-process HTTP connections at roughly five-second intervals are consistent with beacon-like callback behavior, but the destination is not established as command-and-control by the provided telemetry alone.",
+      "supports": [
+        "O2"
+      ],
+      "any": [
+        "beacon-like",
+        "periodic",
+        "callback",
+        "not established"
+      ]
+    },
+    {
+      "id": "I4",
+      "desc": "The whoami reconnaissance, recurring network activity, and LSASS memory-read sequence together are consistent with an interactive PowerShell implant performing credential dumping.",
+      "supports": [
+        "O1",
+        "O2",
+        "O3"
+      ],
+      "any": [
+        "powershell implant",
+        "credential dumping",
+        "reconnaissance"
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "type": "host",
+      "value": "WKS-4471 (10.24.8.21)",
+      "any": [
+        "wks-4471",
+        "10.24.8.21"
+      ]
+    },
+    {
+      "type": "account",
+      "value": "CORP\\j.marsh",
+      "any": [
+        "j.marsh"
+      ]
+    },
+    {
+      "type": "source_process",
+      "value": "powershell.exe PID 1648",
+      "any": [
+        "powershell",
+        "1648"
+      ]
+    },
+    {
+      "type": "target_process",
+      "value": "lsass.exe PID 768",
+      "any": [
+        "lsass",
+        "768"
+      ]
+    },
+    {
+      "type": "ip",
+      "value": "10.24.9.50:80",
+      "any": [
+        "10.24.9.50",
+        "80"
+      ]
+    }
+  ],
+  "investigations": [
+    {
+      "id": "P1",
+      "desc": "Confirm whether PowerShell PID 1648 and its LSASS access were authorized security, diagnostic, or testing activity.",
+      "any": [
+        "authorized",
+        "customer",
+        "security tooling",
+        "testing"
+      ]
+    },
+    {
+      "id": "P2",
+      "desc": "Acquire PowerShell PID 1648 memory and relevant endpoint artifacts to identify the code associated with the UNKNOWN call-trace address and determine how it was loaded.",
+      "any": [
+        "memory acquisition",
+        "calltrace",
+        "unknown",
+        "loading method"
+      ]
+    },
+    {
+      "id": "P3",
+      "desc": "Investigate 10.24.9.50:80 using DNS, proxy, firewall, flow, and threat-intelligence data, and compare request content and timing.",
+      "any": [
+        "10.24.9.50",
+        "proxy",
+        "firewall",
+        "threat intelligence"
+      ]
+    },
+    {
+      "id": "P4",
+      "desc": "Review the full PowerShell process lineage, encoded command or script content, logon session, and sibling or child processes around PID 1648.",
+      "any": [
+        "process lineage",
+        "encoded command",
+        "script",
+        "logon"
+      ]
+    },
+    {
+      "id": "P5",
+      "desc": "Hunt for subsequent use of credentials, anomalous authentications, lateral movement, and related activity by CORP\\j.marsh or from WKS-4471.",
+      "any": [
+        "credential use",
+        "authentication",
+        "lateral movement",
+        "hunt"
+      ]
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "U1",
+      "desc": "Customer authorization, approved tooling, and change-management context for PowerShell PID 1648 are unknown.",
+      "any": [
+        "authorization",
+        "approved tooling",
+        "change management"
+      ]
+    },
+    {
+      "id": "U2",
+      "desc": "The identity, ownership, and purpose of 10.24.9.50:80 are unknown; command-and-control is an inference, not a directly observed label.",
+      "any": [
+        "destination ownership",
+        "purpose",
+        "c2 inference"
+      ]
+    },
+    {
+      "id": "U3",
+      "desc": "Whether credential material was successfully extracted, written, transferred, or used is not observed in the provided window/chain.",
+      "any": [
+        "credential extraction",
+        "written",
+        "transferred",
+        "not observed"
+      ]
+    }
+  ],
+  "scenario_id": "scenario_002_mimikatz_lsass_memory",
+  "scenario_family": "clear_malicious"
+}

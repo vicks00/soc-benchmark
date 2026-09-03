@@ -1,0 +1,135 @@
+{
+  "case_id": "CASE-26BD577A",
+  "environment": {
+    "host": "WKS-4471",
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain_role": "workstation",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-CRED-001",
+    "rule_name": "LSASS Process Memory Read via Suspicious Handle",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "description": "A process obtained a handle to lsass.exe with access rights permitting memory reads (PROCESS_VM_READ). LSASS holds plaintext credentials, hashes, and Kerberos tickets in memory; non-security-tooling reads of LSASS are a high-fidelity indicator of credential theft, independent of the dumping tool used.",
+    "detection_logic": "Sysmon EventID=10 (ProcessAccess) WHERE TargetImage ENDSWITH '\\lsass.exe' AND GrantedAccess IN (0x1010,0x1038,0x1410,0x1438,0x143a,0x1fffff) AND SourceImage NOT IN (known_security_tooling) AND SourceImage NOT IN (wininit.exe, csrss.exe, services.exe, MsMpEng.exe)",
+    "data_source": "Sysmon Operational (EventID 10)",
+    "fired_at": "2020-10-18T23:50:05.963Z",
+    "trigger_count": 2,
+    "host": "WKS-4471"
+  },
+  "context_tier": "curated",
+  "telemetry": [
+    {
+      "event_id": "Sysmon/1",
+      "event_type": "ProcessCreate",
+      "utc_time": "2020-10-18 23:50:05.910",
+      "record_id": "R000117",
+      "process_id": "4824",
+      "image": "C:\\Windows\\System32\\rundll32.exe",
+      "command_line": "\"C:\\Windows\\System32\\rundll32.exe\" C:\\windows\\System32\\comsvcs.dll MiniDump 756 C:\\Users\\t.okafor\\AppData\\Local\\Temp\\lsass-comsvcs.dmp full",
+      "current_directory": "C:\\Users\\t.okafor\\",
+      "user": "WKS-4471\\t.okafor",
+      "integrity_level": "High",
+      "hashes": "SHA1=7662A8D2F23C3474DEC6EF8E2B0365B0B86714EE,MD5=F68AF942FD7CCC0E7BAB1A2335D2AD26,SHA256=11064E9EDC605BD5B0C0A505538A0D5FD7DE53883AF342F091687CAE8628ACD0,IMPHASH=F27A7FC3A53E74F45BE370131953896A",
+      "parent_process_id": "6100",
+      "parent_image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "parent_command_line": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe ",
+      "original_file_name": "RUNDLL32.EXE"
+    },
+    {
+      "event_id": "Sysmon/7",
+      "event_type": "ImageLoad",
+      "utc_time": "2020-10-18 23:50:05.947",
+      "record_id": "R000129",
+      "process_id": "4824",
+      "image": "C:\\Windows\\System32\\rundll32.exe",
+      "image_loaded": "C:\\Windows\\System32\\comsvcs.dll",
+      "signed": "true",
+      "signature": "Microsoft Windows",
+      "signature_status": "Valid",
+      "company": "Microsoft Corporation",
+      "description": "COM+ Services",
+      "hashes": "SHA1=36FEF94305510994A6D390CD54235E8146A4CB83,MD5=4497582A91B3B284661143010AE35D57,SHA256=83C7AF7FF1B4AAFD983A8C3B0EAD10391C1A195CAD3CE59DA04747CDC931B066,IMPHASH=EADBCCBB324829ACB5F2BBE87E5549A8"
+    },
+    {
+      "event_id": "Sysmon/10",
+      "event_type": "ProcessAccess",
+      "utc_time": "2020-10-18 23:50:05.963",
+      "record_id": "R000140",
+      "source_process_id": "4824",
+      "source_image": "C:\\Windows\\System32\\rundll32.exe",
+      "target_process_id": "756",
+      "target_image": "C:\\windows\\system32\\lsass.exe",
+      "granted_access": "0x1410",
+      "call_trace": "C:\\windows\\SYSTEM32\\ntdll.dll+9c584|C:\\windows\\System32\\KERNELBASE.dll+305fe|C:\\windows\\System32\\comsvcs.dll+3c56f|C:\\Windows\\System32\\rundll32.exe+3bcf|C:\\Windows\\System32\\rundll32.exe+62d9|C:\\windows\\System32\\KERNEL32.DLL+17c24|C:\\windows\\SYSTEM32\\ntdll.dll+6cea1"
+    },
+    {
+      "event_id": "Sysmon/11",
+      "event_type": "FileCreate",
+      "utc_time": "2020-10-18 23:50:05.963",
+      "record_id": "R000139",
+      "process_id": "4824",
+      "image": "C:\\Windows\\System32\\rundll32.exe",
+      "target_filename": "C:\\Users\\t.okafor\\AppData\\Local\\Temp\\lsass-comsvcs.dmp",
+      "creation_utc_time": "2020-10-18 23:50:05.963"
+    },
+    {
+      "event_id": "Sysmon/7",
+      "event_type": "ImageLoad",
+      "utc_time": "2020-10-18 23:50:05.994",
+      "record_id": "R000147",
+      "process_id": "4824",
+      "image": "C:\\Windows\\System32\\rundll32.exe",
+      "image_loaded": "C:\\Windows\\System32\\dbgcore.dll",
+      "signed": "true",
+      "signature": "Microsoft Windows",
+      "signature_status": "Valid",
+      "company": "Microsoft Corporation",
+      "description": "Windows Core Debugging Helpers",
+      "hashes": "SHA1=108943FBF8312BBB0C9CAC3931C227CD3C60E87C,MD5=AD92544DB12E3B50ECBD9B0F8FF1331F,SHA256=CC7DCCBAE53DD4EF0521A9AD260B5094D91F2C5A631072687279C03281C1579C,IMPHASH=5203F507E4A303D63F015849CE72F6B2"
+    },
+    {
+      "event_id": "Sysmon/7",
+      "event_type": "ImageLoad",
+      "utc_time": "2020-10-18 23:50:05.994",
+      "record_id": "R000148",
+      "process_id": "4824",
+      "image": "C:\\Windows\\System32\\rundll32.exe",
+      "image_loaded": "C:\\Windows\\System32\\dbghelp.dll",
+      "signed": "true",
+      "signature": "Microsoft Windows",
+      "signature_status": "Valid",
+      "company": "Microsoft Corporation",
+      "description": "Windows Image Helper",
+      "hashes": "SHA1=05EE2A5807C15A68FC01F8226B7AB670E997DC17,MD5=4D9BE9FEC7FA4A16BB62BFDDC656C60D,SHA256=E2BD6557A60FCA4EF3A0350DB057E64767A3E07ECC229C0859DBD60BF16C66F7,IMPHASH=A3BCCB56DF3A7F1398A01550180F0559"
+    },
+    {
+      "event_id": "Sysmon/10",
+      "event_type": "ProcessAccess",
+      "utc_time": "2020-10-18 23:50:05.994",
+      "record_id": "R000149",
+      "source_process_id": "4824",
+      "source_image": "C:\\Windows\\System32\\rundll32.exe",
+      "target_process_id": "756",
+      "target_image": "C:\\windows\\system32\\lsass.exe",
+      "granted_access": "0x1fffff",
+      "call_trace": "C:\\windows\\SYSTEM32\\ntdll.dll+9c584|C:\\windows\\SYSTEM32\\ntdll.dll+74bf7|C:\\windows\\System32\\KERNEL32.DLL+1c258|C:\\windows\\System32\\KERNEL32.DLL+23278|C:\\windows\\SYSTEM32\\dbgcore.DLL+9447|C:\\windows\\SYSTEM32\\dbgcore.DLL+16185|C:\\windows\\SYSTEM32\\dbgcore.DLL+100a6|C:\\windows\\SYSTEM32\\dbgcore.DLL+613f|C:\\windows\\SYSTEM32\\dbgcore.DLL+6bbc|C:\\windows\\System32\\comsvcs.dll+3c684|C:\\Windows\\System32\\rundll32.exe+3bcf|C:\\Windows\\System32\\rundll32.exe+62d9|C:\\windows\\System32\\KERNEL32.DLL+17c24|C:\\windows\\SYSTEM32\\ntdll.dll+6cea1"
+    }
+  ],
+  "enrichment": {
+    "lsass_pid_756": "Target PID 756 = lsass.exe (Local Security Authority Subsystem Service) - stores credential material in memory.",
+    "source_account": "WKS-4471\\t.okafor resolves to RID 500 (built-in local Administrator); SID S-1-5-21-2024000001-2024000002-2024000003-500.",
+    "comsvcs_technique": "rundll32.exe calling comsvcs.dll export 'MiniDump' is a known living-off-the-land LSASS dumping method using a signed, built-in Windows DLL (no attacker binary on disk).",
+    "granted_access_decode": {
+      "0x1410": "PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ",
+      "0x1fffff": "PROCESS_ALL_ACCESS"
+    },
+    "call_trace_note": "GrantedAccess 0x1410 ProcessAccess CallTrace transits comsvcs.dll, confirming the read originated from the MiniDump export rather than a normal API path.",
+    "dump_artifact": "rundll32 wrote C:\\Users\\t.okafor\\AppData\\Local\\Temp\\lsass-comsvcs.dmp - an offline-crackable copy of LSASS memory.",
+    "asset_criticality": "Workstation; standard endpoint. No security tooling matches the source process."
+  }
+}

@@ -1,0 +1,452 @@
+{
+  "scenario_id": "scenario_006_msbuild_wmi_lateral",
+  "scenario_family": "clear_malicious",
+  "title": "Remote WMI execution of an MSBuild inline-task payload staged over SMB",
+  "multi_host": true,
+  "source": {
+    "kind": "host",
+    "zip": "empire_msbuild_dcerpc_wmi_smb.zip",
+    "citation": "OTRF Security-Datasets / atomic/windows/lateral_movement/host/empire_msbuild_dcerpc_wmi_smb",
+    "upstream_path": "datasets/atomic/windows/lateral_movement/host/empire_msbuild_dcerpc_wmi_smb.zip"
+  },
+  "environment": {
+    "hosts": [
+      "WORKSTATION5 (source)",
+      "WORKSTATION6 (target)"
+    ],
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain": "THESHIRE.LOCAL",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing (File Share auditing)"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-EXEC-T1127-001",
+    "rule_name": "Defense Evasion: MSBuild Executed a Project File From a Non-Development Path",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "mitre_attack": {
+      "tactic": "TA0005 - Defense Evasion",
+      "technique": "T1127.001 - Trusted Developer Utilities Proxy Execution: MSBuild"
+    },
+    "description": "MSBuild.exe executed a project file located outside any recognised source-code or build-agent path. MSBuild is a signed Microsoft binary that will compile and run arbitrary C# supplied inline in a project file, so it is used to execute code on hosts where unsigned binaries would be blocked or noticed.",
+    "detection_logic": "Sysmon EventID=1 (ProcessCreate) WHERE Image ENDSWITH '\\MSBuild.exe' AND CommandLine MATCHES '\\.(xml|csproj|proj|targets)' AND CommandLine NOT MATCHES ANY (source_root_paths, build_agent_paths, '\\\\Program Files')",
+    "data_source": "Sysmon Operational (EventID 1) on WORKSTATION6",
+    "fired_at": "2020-09-20T21:39:24.350Z",
+    "trigger_count": 1,
+    "host": "WORKSTATION6"
+  },
+  "select": {
+    "minimal": [
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "MSBuild.exe"
+        },
+        "limit": 1
+      }
+    ],
+    "curated": [
+      {
+        "event_id": "Security/5145",
+        "where": {
+          "relative_target_name__contains": "pshell.xml"
+        },
+        "limit": 3
+      },
+      {
+        "event_id": "Sysmon/11",
+        "where": {
+          "target_filename__contains": "Tasks\\pshell.xml"
+        }
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "command_line__contains": "pshell.xml"
+        },
+        "limit": 2
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "csc.exe"
+        },
+        "limit": 2
+      },
+      {
+        "event_id": "Sysmon/11",
+        "where": {
+          "target_filename__endswith": ".dll",
+          "image__endswith": "MSBuild.exe"
+        },
+        "limit": 2
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "parent_image__endswith": "MSBuild.exe",
+          "image__contains": "powershell"
+        },
+        "limit": 1
+      }
+    ],
+    "verbose": {
+      "hosts": [
+        "WORKSTATION5",
+        "WORKSTATION6"
+      ],
+      "start": "2020-09-20 21:39:23.5",
+      "end": "2020-09-20 21:39:29.2",
+      "drop_event_ids": [
+        800,
+        4103
+      ],
+      "keep_all_event_ids": [
+        1,
+        11,
+        5145
+      ],
+      "max_per_event_id": 11,
+      "max_events": 340
+    }
+  },
+  "enrichment": {
+    "msbuild_abuse": "MSBuild.exe supports inline tasks: a project file may embed C# source in a <Task><Code> element, which MSBuild compiles at run time via csc.exe and executes in its own process. The result is arbitrary code execution from a signed, Microsoft-published binary already present on every .NET-capable Windows host.",
+    "path_anomaly": "The project file is C:\\Windows\\Tasks\\pshell.xml. C:\\Windows\\Tasks is a legacy scheduled-task directory, not a build path, and is writable by administrators over the C$ share. A genuine build runs against a project inside a source tree or a build-agent workspace.",
+    "delivery_path": "Security 5145 on WORKSTATION6 records pshell.xml written to \\\\*\\C$ under 'Windows\\Tasks' by THESHIRE\\pgustavo, and the matching local Sysmon FileCreate is attributed to Image 'System' \u2014 the kernel SMB server. The file was staged remotely, 0.2 seconds before it was executed.",
+    "execution_vector": "The cmd.exe that launched MSBuild has WmiPrvSE.exe as its parent. A local user session does not produce that lineage; a remote WMI Win32_Process Create call does. Staging over SMB and triggering over WMI is a two-protocol lateral-movement pattern that leaves no service or scheduled task behind.",
+    "compilation_evidence": "MSBuild.exe spawned csc.exe twice against generated .cmdline files in the user's Temp directory, and wrote .cs, .dll and .out artifacts into randomly-named Temp subdirectories (tfmbbev2, qu22daba). This is the inline-task compiler at work, and is the strongest single discriminator from a normal build, where sources live beside the project file.",
+    "payload": "MSBuild.exe then spawned powershell.exe with '-noP -sta -w 1 -enc <base64>'. The -enc flag plus a hidden window and non-interactive flags is the standard launcher shape for a PowerShell implant stager.",
+    "access_mask_decode": {
+      "0x120196": "Write and append access \u2014 file being created or overwritten.",
+      "0x80": "ReadAttributes.",
+      "0x2": "WriteData."
+    }
+  },
+  "gold": {
+    "verdict": {
+      "classification": "Malicious",
+      "recommended_action": "Contain / Isolate Endpoint",
+      "severity": "High",
+      "mitre_techniques": [
+        "T1127.001",
+        "T1047",
+        "T1021.002",
+        "T1059.001"
+      ],
+      "terminal_action_allowed": false,
+      "rationale": "The provided telemetry shows pshell.xml written through WKS-4472's C$ share from WKS-4471, WmiPrvSE launching a command that executes that file with MSBuild, MSBuild creating temporary C# and DLL artifacts and spawning csc.exe, and MSBuild then spawning hidden encoded PowerShell with an outbound connection. The end-to-end execution chain is sufficiently specific to classify as malicious without requiring decoded payload semantics.",
+      "acceptable_alternatives": []
+    },
+    "observations": [
+      {
+        "id": "O1",
+        "desc": "On WKS-4472, Security Event 5145 records CORP\\j.marsh from 10.24.8.21 requesting write-capable access to C$\\Windows\\Tasks\\pshell.xml, and Sysmon records System creating that file.",
+        "event_refs": [
+          "Security/5145 WKS-4472 RelativeTargetName=Windows\\Tasks\\pshell.xml AccessMask=0x120196 source=10.24.8.21 account=CORP\\j.marsh",
+          "Security/5145 WKS-4472 RelativeTargetName=Windows\\Tasks\\pshell.xml AccessMask=0x2",
+          "Sysmon/11 WKS-4472 2020-09-20 21:39:23.968 TargetFilename=C:\\Windows\\Tasks\\pshell.xml Image=System"
+        ],
+        "any": [
+          "5145",
+          "pshell.xml",
+          "c$",
+          "j.marsh",
+          "10.24.8.21"
+        ],
+        "record_refs": [
+          "R000940",
+          "R001271",
+          "R001273",
+          "R001274"
+        ]
+      },
+      {
+        "id": "O2",
+        "desc": "WmiPrvSE.exe PID 6944 on WKS-4472 created cmd.exe to run MSBuild.exe against C:\\Windows\\Tasks\\pshell.xml as CORP\\j.marsh in terminal session 0.",
+        "event_refs": [
+          "Sysmon/1 WKS-4472 2020-09-20 21:39:24.176 ParentImage=WmiPrvSE.exe ParentPID=6944 Image=cmd.exe CommandLine=cmd.exe /c ...\\MSBuild.exe C:\\Windows\\Tasks\\pshell.xml",
+          "Security/4688 WKS-4472 ParentProcessName=WmiPrvSE.exe NewProcessName=cmd.exe CommandLine=cmd.exe /c ...\\MSBuild.exe C:\\Windows\\Tasks\\pshell.xml"
+        ],
+        "any": [
+          "wmiprvse",
+          "cmd.exe",
+          "terminal session 0",
+          "pshell.xml"
+        ],
+        "record_refs": [
+          "R000950",
+          "R001284"
+        ]
+      },
+      {
+        "id": "O3",
+        "desc": "MSBuild.exe PID 5460 executed C:\\Windows\\Tasks\\pshell.xml from C:\\windows\\system32 on WKS-4472.",
+        "event_refs": [
+          "Sysmon/1 WKS-4472 2020-09-20 21:39:24.350 Image=MSBuild.exe PID=5460 CommandLine=MSBuild.exe C:\\Windows\\Tasks\\pshell.xml CurrentDirectory=C:\\windows\\system32"
+        ],
+        "any": [
+          "msbuild",
+          "pid 5460",
+          "windows\\tasks",
+          "system32"
+        ],
+        "record_refs": [
+          "R000993"
+        ]
+      },
+      {
+        "id": "O4",
+        "desc": "MSBuild.exe created randomly named Temp directories with .cs and .dll files and spawned csc.exe twice using generated .cmdline files.",
+        "event_refs": [
+          "Sysmon/11 WKS-4472 2020-09-20 21:39:26.456 Image=MSBuild.exe TargetFilename=...\\Temp\\tfmbbev2\\tfmbbev2.0.cs",
+          "Sysmon/11 WKS-4472 2020-09-20 21:39:26.456 Image=MSBuild.exe TargetFilename=...\\Temp\\tfmbbev2\\tfmbbev2.dll",
+          "Sysmon/1 WKS-4472 2020-09-20 21:39:26.517 ParentImage=MSBuild.exe Image=csc.exe CommandLine=csc.exe ... @...\\tfmbbev2.cmdline",
+          "Sysmon/11 WKS-4472 2020-09-20 21:39:27.824 Image=MSBuild.exe TargetFilename=...\\Temp\\qu22daba\\qu22daba.0.cs",
+          "Sysmon/1 WKS-4472 2020-09-20 21:39:27.830 ParentImage=MSBuild.exe Image=csc.exe CommandLine=csc.exe ... @...\\qu22daba.cmdline"
+        ],
+        "any": [
+          "csc.exe",
+          "tfmbbev2",
+          "qu22daba",
+          ".cs",
+          ".dll"
+        ],
+        "record_refs": [
+          "R001387",
+          "R001388",
+          "R001398",
+          "R001553",
+          "R001554",
+          "R001582"
+        ]
+      },
+      {
+        "id": "O5",
+        "desc": "MSBuild.exe spawned powershell.exe with -noP, -sta, -w 1, and -enc, and that PowerShell process initiated a TCP connection from WKS-4472 to 10.24.9.50:80.",
+        "event_refs": [
+          "Sysmon/1 WKS-4472 2020-09-20 21:39:28.690 ParentImage=MSBuild.exe Image=powershell.exe CommandLine includes -noP -sta -w 1 -enc",
+          "Sysmon/3 WKS-4472 2020-09-20 21:39:28.662 Image=powershell.exe Initiated=true DestinationIp=10.24.9.50 DestinationPort=80"
+        ],
+        "any": [
+          "powershell",
+          "-nop",
+          "-w 1",
+          "-enc",
+          "10.24.9.50"
+        ],
+        "record_refs": [
+          "R001728",
+          "R001752"
+        ]
+      }
+    ],
+    "inferences": [
+      {
+        "id": "I1",
+        "desc": "The share-audit and System file-create records are consistent with pshell.xml being staged remotely from WKS-4471 to WKS-4472 over SMB.",
+        "supports": [
+          "O1"
+        ],
+        "any": [
+          "remote",
+          "staged",
+          "smb",
+          "administrative share"
+        ]
+      },
+      {
+        "id": "I2",
+        "desc": "The WmiPrvSE-to-cmd lineage, remote source activity, and session-0 execution are consistent with remote WMI process creation.",
+        "supports": [
+          "O1",
+          "O2"
+        ],
+        "any": [
+          "remote WMI",
+          "process creation",
+          "session 0",
+          "lineage"
+        ]
+      },
+      {
+        "id": "I3",
+        "desc": "The csc.exe children and generated temporary C# and DLL artifacts are consistent with MSBuild compiling and executing inline tasks from pshell.xml.",
+        "supports": [
+          "O3",
+          "O4"
+        ],
+        "any": [
+          "inline task",
+          "compile",
+          "csc",
+          "temporary artifacts"
+        ]
+      },
+      {
+        "id": "I4",
+        "desc": "Remote staging followed by WMI-launched MSBuild compilation, hidden encoded PowerShell, and outbound traffic is a high-specificity malicious execution chain even though the encoded command's semantics have not been decoded.",
+        "supports": [
+          "O1",
+          "O2",
+          "O3",
+          "O4",
+          "O5"
+        ],
+        "any": [
+          "malicious",
+          "encoded powershell",
+          "outbound",
+          "execution chain"
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "type": "host",
+        "value": "WKS-4472",
+        "any": [
+          "WKS-4472",
+          "10.24.8.22"
+        ]
+      },
+      {
+        "type": "host",
+        "value": "WKS-4471",
+        "any": [
+          "WKS-4471",
+          "10.24.8.21"
+        ]
+      },
+      {
+        "type": "account",
+        "value": "CORP\\j.marsh",
+        "any": [
+          "j.marsh"
+        ]
+      },
+      {
+        "type": "file",
+        "value": "C:\\Windows\\Tasks\\pshell.xml",
+        "any": [
+          "pshell.xml"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "MSBuild.exe PID 5460",
+        "any": [
+          "msbuild",
+          "5460"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "powershell.exe",
+        "any": [
+          "powershell",
+          "-enc"
+        ]
+      },
+      {
+        "type": "network_destination",
+        "value": "10.24.9.50:80",
+        "any": [
+          "10.24.9.50",
+          "port 80"
+        ]
+      }
+    ],
+    "investigations": [
+      {
+        "id": "P1",
+        "desc": "Acquire pshell.xml and the generated compiler artifacts from WKS-4472 for static analysis and hash comparison.",
+        "any": [
+          "acquire",
+          "pshell.xml",
+          "compiler artifacts",
+          "static analysis",
+          "hash"
+        ]
+      },
+      {
+        "id": "P2",
+        "desc": "Review authentication, share-access, and WMI telemetry for CORP\\j.marsh and WKS-4471 around the observed execution window.",
+        "any": [
+          "authentication",
+          "share access",
+          "wmi",
+          "j.marsh",
+          "WKS-4471"
+        ]
+      },
+      {
+        "id": "P3",
+        "desc": "Collect endpoint and network evidence for the MSBuild-launched PowerShell process and determine the ownership and purpose of 10.24.9.50.",
+        "any": [
+          "powershell",
+          "network evidence",
+          "10.24.9.50",
+          "destination",
+          "process"
+        ]
+      },
+      {
+        "id": "P4",
+        "desc": "Decode the observed PowerShell command when possible to scope capabilities and follow-on impact, without making decoding a prerequisite for disposition.",
+        "any": [
+          "decode",
+          "powershell",
+          "scope",
+          "impact",
+          "not prerequisite"
+        ]
+      },
+      {
+        "id": "P5",
+        "desc": "Ask the customer whether CORP\\j.marsh was authorized to stage pshell.xml and execute it remotely through WMI and MSBuild.",
+        "any": [
+          "customer",
+          "authorization",
+          "change record",
+          "j.marsh",
+          "expected"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "id": "U1",
+        "desc": "Customer authorization, maintenance, build, and testing context is unavailable.",
+        "any": [
+          "authorization",
+          "maintenance",
+          "build context",
+          "testing"
+        ]
+      },
+      {
+        "id": "U2",
+        "desc": "The exact source content in pshell.xml and decoded semantics of the encoded PowerShell command are not established by the provided telemetry.",
+        "any": [
+          "pshell.xml content",
+          "decoded semantics",
+          "encoded command",
+          "unknown payload"
+        ]
+      },
+      {
+        "id": "U3",
+        "desc": "The ownership and role of 10.24.9.50 and any activity outside the provided window are unknown.",
+        "any": [
+          "10.24.9.50",
+          "ownership",
+          "outside window",
+          "scope"
+        ]
+      }
+    ]
+  }
+}

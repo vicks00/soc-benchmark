@@ -1,0 +1,387 @@
+{
+  "scenario_id": "scenario_007_mshta_vbscript_exec",
+  "scenario_family": "customer_context_required",
+  "title": "mshta.exe inline vbscript: proxy execution with a reconnaissance payload",
+  "source": {
+    "kind": "host",
+    "zip": "cmd_mshta_vbscript_execute_psh.zip",
+    "citation": "OTRF Security-Datasets / atomic/windows/defense_evasion/host/cmd_mshta_vbscript_execute_psh",
+    "upstream_path": "datasets/atomic/windows/defense_evasion/host/cmd_mshta_vbscript_execute_psh.zip"
+  },
+  "environment": {
+    "host": "WORKSTATION5",
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain_role": "workstation",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-EVASION-T1218-005",
+    "rule_name": "Defense Evasion: mshta.exe Executed Inline Script Without an HTA File",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "mitre_attack": {
+      "tactic": "TA0005 - Defense Evasion",
+      "technique": "T1218.005 - System Binary Proxy Execution: Mshta"
+    },
+    "description": "mshta.exe was invoked with a vbscript: or javascript: URI on its command line rather than a path to an .hta file. In that form mshta acts as a general-purpose script interpreter, which is used to run code under the identity of a signed Microsoft binary and to bypass application-control policies that permit mshta.exe.",
+    "detection_logic": "Sysmon EventID=1 (ProcessCreate) WHERE Image ENDSWITH '\\mshta.exe' AND CommandLine MATCHES ANY ('vbscript:', 'javascript:', 'about:') AND CommandLine NOT MATCHES '\\.hta'",
+    "data_source": "Sysmon Operational (EventID 1)",
+    "fired_at": "2020-10-22T06:57:59.855Z",
+    "trigger_count": 1,
+    "host": "WORKSTATION5"
+  },
+  "select": {
+    "minimal": [
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "mshta.exe"
+        },
+        "limit": 1
+      }
+    ],
+    "curated": [
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "mshta.exe"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "parent_image__endswith": "mshta.exe"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "conhost.exe"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "Security/4688",
+        "where": {
+          "command_line__contains": "mshta"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "Security/4688",
+        "where": {
+          "command_line__contains": "Get-Service"
+        },
+        "limit": 1
+      }
+    ],
+    "verbose": {
+      "hosts": [
+        "WORKSTATION5"
+      ],
+      "start": "2020-10-22 06:57:58.5",
+      "end": "2020-10-22 06:58:02",
+      "keep_all_event_ids": [
+        1,
+        3,
+        11,
+        22,
+        4688
+      ],
+      "max_per_event_id": 18,
+      "max_events": 300
+    }
+  },
+  "enrichment": {
+    "technique_note": "mshta.exe launched with a 'vbscript:Execute(...)' URI executes the supplied script directly. There is no .hta file on disk and no remote URL in this invocation, so there is no downloaded artifact to analyse \u2014 everything the process did is on its command line.",
+    "command_chain": "mshta.exe creates a Wscript.Shell COM object and calls .Run on it, which spawns powershell.exe. The observed lineage is cmd.exe -> mshta.exe -> powershell.exe -> conhost.exe.",
+    "payload_content": "The command the payload actually runs is 'powershell -noexit -command Get-Service sysmon'. Get-Service queries the state of a named Windows service; 'sysmon' is the endpoint telemetry agent. The command reads service state and does not stop, disable, reconfigure or delete anything. -noexit leaves the console open, which is characteristic of a human running a command interactively rather than an automated implant.",
+    "what_is_absent": "Within the captured window there are no outbound network connections, no DNS queries, no files written outside normal process working paths, no registry persistence writes, no service or scheduled-task creation, and no access to credential stores. The process tree terminates at the PowerShell console.",
+    "account_and_parent": "The user is WORKSTATION5\\wardog, a local account, and the parent is an interactive cmd.exe session \u2014 consistent with someone typing at the console rather than remote or automated execution."
+  },
+  "gold": {
+    "verdict": {
+      "classification": "Suspicious",
+      "recommended_action": "Escalate for Investigation",
+      "severity": "Medium",
+      "mitre_techniques": [
+        "T1218.005",
+        "T1518.001"
+      ],
+      "terminal_action_allowed": false,
+      "rationale": "The chain uses an inline vbscript URI in mshta.exe to launch PowerShell and query the Sysmon service, which is a suspicious proxy-execution and security-software discovery pattern. The provided window also shows a high-integrity terminal session and limited follow-on behavior, including only normal-looking Recent-items file artifacts and no mshta/PowerShell network events observed in the provided chain. Without customer authorization or change context, intent remains unresolved and escalation is safer than either automated closure or immediate containment.",
+      "acceptable_alternatives": [
+        {
+          "classification": "Malicious",
+          "recommended_action": "Escalate for Investigation",
+          "severity": "High",
+          "mitre_techniques": [
+            "T1218.005",
+            "T1518.001"
+          ],
+          "rationale": "Malicious is defensible because O1 (R000284) records inline vbscript proxy execution through mshta and O3 (R000422, R000445) records the resulting PowerShell query of the Sysmon service. O4 (R000612, R000616) shows only routine shell artifacts, and the delivered window does not establish follow-on impact, so escalation remains required while authorization and intent are verified.",
+          "terminal_action_allowed": false,
+          "credit": 0.5,
+          "credit_rationale": "This reading survives peer review because the invocation matches offensive proxy-execution and security-software-discovery tradecraft, but it receives half relief because the observed command is read-only and the delivered window shows no attributable network or follow-on impact."
+        }
+      ]
+    },
+    "observations": [
+      {
+        "id": "O1",
+        "desc": "On WKS-4471, cmd.exe launched mshta.exe PID 10980 with an inline vbscript:Execute command that creates Wscript.Shell and requests powershell -noexit -command Get-Service sysmon.",
+        "event_refs": [
+          "Sysmon/1 WKS-4471 2020-10-22 06:57:59.855 Image=mshta.exe PID=10980 ParentImage=cmd.exe CommandLine=mshta vbscript:Execute(...)"
+        ],
+        "any": [
+          "mshta",
+          "vbscript:execute",
+          "wscript.shell",
+          "get-service sysmon"
+        ],
+        "record_refs": [
+          "R000284"
+        ]
+      },
+      {
+        "id": "O2",
+        "desc": "The mshta.exe process ran as WKS-4471\\t.okafor at high integrity in terminal session 2 with current directory C:\\Users\\t.okafor\\.",
+        "event_refs": [
+          "Sysmon/1 WKS-4471 2020-10-22 06:57:59.855 User=WKS-4471\\t.okafor IntegrityLevel=High TerminalSessionId=2 CurrentDirectory=C:\\Users\\t.okafor\\"
+        ],
+        "any": [
+          "t.okafor",
+          "high integrity",
+          "terminal session 2",
+          "current directory"
+        ],
+        "record_refs": [
+          "R000284"
+        ]
+      },
+      {
+        "id": "O3",
+        "desc": "mshta.exe PID 10980 created powershell.exe PID 9572 with the command Get-Service sysmon, and PowerShell then created conhost.exe PID 10164.",
+        "event_refs": [
+          "Sysmon/1 WKS-4471 2020-10-22 06:58:00.462 ParentImage=mshta.exe ParentPID=10980 Image=powershell.exe PID=9572 CommandLine=powershell.exe -noexit -command Get-Service sysmon",
+          "Sysmon/1 WKS-4471 2020-10-22 06:58:00.568 ParentImage=powershell.exe ParentPID=9572 Image=conhost.exe PID=10164"
+        ],
+        "any": [
+          "powershell",
+          "get-service",
+          "sysmon",
+          "conhost"
+        ],
+        "record_refs": [
+          "R000422",
+          "R000445"
+        ]
+      },
+      {
+        "id": "O4",
+        "desc": "PowerShell PID 9572 created temporary CustomDestinations files under the user's Recent directory in the provided window.",
+        "event_refs": [
+          "Sysmon/11 WKS-4471 2020-10-22 06:58:00.850 Image=powershell.exe PID=9572 TargetFilename=...\\Recent\\CustomDestinations\\EIS7I0X65KLKX76PEZD8.temp",
+          "Sysmon/11 WKS-4471 2020-10-22 06:58:00.881 Image=powershell.exe PID=9572 TargetFilename=...\\Recent\\CustomDestinations\\590aee7bdd69b59b.customDestinations-ms~RF1473b55e.TMP"
+        ],
+        "any": [
+          "file created",
+          "customdestinations",
+          "recent",
+          "powershell"
+        ],
+        "record_refs": [
+          "R000612",
+          "R000616"
+        ]
+      }
+    ],
+    "inferences": [
+      {
+        "id": "I1",
+        "desc": "Using mshta.exe with an inline vbscript URI to create PowerShell is consistent with signed-binary proxy execution rather than ordinary HTA-file use.",
+        "supports": [
+          "O1",
+          "O3"
+        ],
+        "any": [
+          "proxy execution",
+          "signed binary",
+          "inline script",
+          "mshta"
+        ]
+      },
+      {
+        "id": "I2",
+        "desc": "Querying the Sysmon service can provide awareness of endpoint monitoring, but the command alone does not establish hostile intent or an attempt to disable the service.",
+        "supports": [
+          "O1",
+          "O3"
+        ],
+        "any": [
+          "security software discovery",
+          "monitoring",
+          "intent unresolved",
+          "not disable"
+        ]
+      },
+      {
+        "id": "I3",
+        "desc": "The high-integrity terminal session, narrow observed command, scoped lack of chain-attributable network events, and Recent-items file artifacts limit the demonstrated impact in the provided window but do not establish that the activity was authorized.",
+        "supports": [
+          "O2",
+          "O3",
+          "O4"
+        ],
+        "any": [
+          "limited impact",
+          "provided window",
+          "authorization unknown",
+          "uncertainty"
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "type": "host",
+        "value": "WKS-4471",
+        "any": [
+          "WKS-4471"
+        ]
+      },
+      {
+        "type": "account",
+        "value": "WKS-4471\\t.okafor",
+        "any": [
+          "t.okafor"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "cmd.exe PID 5888",
+        "any": [
+          "cmd.exe",
+          "5888"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "mshta.exe PID 10980",
+        "any": [
+          "mshta",
+          "10980"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "powershell.exe PID 9572",
+        "any": [
+          "powershell",
+          "9572"
+        ]
+      },
+      {
+        "type": "service",
+        "value": "sysmon",
+        "any": [
+          "sysmon",
+          "get-service"
+        ]
+      }
+    ],
+    "investigations": [
+      {
+        "id": "P1",
+        "desc": "Ask the customer whether WKS-4471\\t.okafor was authorized to test this mshta technique or query the Sysmon service at the observed time.",
+        "any": [
+          "customer",
+          "authorization",
+          "change record",
+          "red team",
+          "t.okafor"
+        ]
+      },
+      {
+        "id": "P2",
+        "desc": "Review the preceding cmd.exe activity and available session telemetry to identify how the inline mshta command was introduced.",
+        "any": [
+          "cmd.exe",
+          "session",
+          "command history",
+          "preceding activity",
+          "introduced"
+        ]
+      },
+      {
+        "id": "P3",
+        "desc": "Extend endpoint and network review beyond the provided window for the mshta and PowerShell process chain, including DNS and connection telemetry.",
+        "any": [
+          "extend window",
+          "network",
+          "dns",
+          "process chain",
+          "follow-on"
+        ]
+      },
+      {
+        "id": "P4",
+        "desc": "Verify the Sysmon service state and review subsequent service-control, registry, task, and process events for attempts to alter monitoring or establish persistence.",
+        "any": [
+          "service state",
+          "service control",
+          "registry",
+          "scheduled task",
+          "persistence"
+        ]
+      },
+      {
+        "id": "P5",
+        "desc": "Inspect the PowerShell-created CustomDestinations artifacts and related user activity to confirm whether they are routine shell-history side effects.",
+        "any": [
+          "customdestinations",
+          "recent",
+          "artifact",
+          "shell history",
+          "routine"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "id": "U1",
+        "desc": "Customer authorization, change-management, maintenance, and red-team context is unavailable.",
+        "any": [
+          "authorization",
+          "change management",
+          "maintenance",
+          "red team"
+        ]
+      },
+      {
+        "id": "U2",
+        "desc": "The origin of the inline command and the operator's intent are not established by the provided telemetry.",
+        "any": [
+          "command origin",
+          "operator",
+          "intent",
+          "unknown"
+        ]
+      },
+      {
+        "id": "U3",
+        "desc": "Activity before or after the provided window, including any later network, persistence, or service-modification behavior, is unknown.",
+        "any": [
+          "outside window",
+          "network",
+          "persistence",
+          "service modification"
+        ]
+      }
+    ]
+  }
+}

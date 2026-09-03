@@ -1,0 +1,311 @@
+{
+  "verdict": {
+    "classification": "Suspicious",
+    "recommended_action": "Escalate for Investigation",
+    "severity": "Medium",
+    "mitre_techniques": [
+      "T1127.001"
+    ],
+    "terminal_action_allowed": false,
+    "rationale": "The corrected target-host lineage, source-control checkout, agent workspace, and ordinary compiler outputs strongly resemble a CI build. However, an evidence-bounded SOC analyst has no pipeline authorization, change record, repository trust, or project-content validation, and MSBuild can execute inline code from the checked-out project. The activity therefore warrants customer confirmation before closure rather than being labeled benign solely from its intended construction.",
+    "acceptable_alternatives": []
+  },
+  "observations": [
+    {
+      "id": "O1",
+      "desc": "On WKS-4472, Sysmon records Agent.Worker.exe PID 6788 running as CORP\\svc-build in session 0 at 2020-09-20 21:39:22.914, with Agent.Listener.exe as its parent.",
+      "event_refs": [
+        "Sysmon/1 WKS-4472 2020-09-20 21:39:22.914 Agent.Worker.exe PID 6788 parent Agent.Listener.exe PID 3416"
+      ],
+      "any": [
+        "Agent.Worker.exe",
+        "Agent.Listener.exe",
+        "6788",
+        "svc-build",
+        "session 0"
+      ],
+      "record_refs": [
+        "R000548"
+      ]
+    },
+    {
+      "id": "O2",
+      "desc": "Agent.Worker.exe initiated a TCP connection from 10.24.8.22 to 13.107.42.20:443 with DestinationHostname dev.azure.com at 21:39:23.061.",
+      "event_refs": [
+        "Sysmon/3 WKS-4472 2020-09-20 21:39:23.061 Agent.Worker.exe 10.24.8.22:51204 -> 13.107.42.20:443 dev.azure.com"
+      ],
+      "any": [
+        "Sysmon/3",
+        "dev.azure.com",
+        "13.107.42.20",
+        "443",
+        "Agent.Worker.exe"
+      ],
+      "record_refs": [
+        "R000550"
+      ]
+    },
+    {
+      "id": "O3",
+      "desc": "git.exe, parented by Agent.Worker.exe and running as CORP\\svc-build, executed a forced checkout of commit 3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b at 21:39:23.204.",
+      "event_refs": [
+        "Sysmon/1 WKS-4472 2020-09-20 21:39:23.204 git.exe PID 6820 parent Agent.Worker.exe PID 6788 checkout 3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b"
+      ],
+      "any": [
+        "git.exe",
+        "checkout",
+        "3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b",
+        "Agent.Worker.exe"
+      ],
+      "record_refs": [
+        "R000552"
+      ]
+    },
+    {
+      "id": "O4",
+      "desc": "git.exe created C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj at 21:39:23.618.",
+      "event_refs": [
+        "Sysmon/11 WKS-4472 2020-09-20 21:39:23.618 git.exe -> C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj"
+      ],
+      "any": [
+        "Sysmon/11",
+        "git.exe",
+        "C:\\a\\1\\s",
+        "Contoso.Billing.csproj"
+      ],
+      "record_refs": [
+        "R000650"
+      ]
+    },
+    {
+      "id": "O5",
+      "desc": "The build-launching cmd.exe invoked MSBuild.exe against that project, and MSBuild.exe started at 21:39:24.350 under CORP\\svc-build.",
+      "event_refs": [
+        "Sysmon/1 WKS-4472 2020-09-20 21:39:24.176 cmd.exe -> MSBuild.exe C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj",
+        "Sysmon/1 WKS-4472 2020-09-20 21:39:24.350 MSBuild.exe parent cmd.exe"
+      ],
+      "any": [
+        "cmd.exe",
+        "MSBuild.exe",
+        "21:39:24.350",
+        "svc-build",
+        "csproj"
+      ],
+      "record_refs": [
+        "R000951",
+        "R000993"
+      ]
+    },
+    {
+      "id": "O6",
+      "desc": "The subsequent target-host chain includes csc.exe and cvtres.exe and writes Contoso.Billing.dll and Contoso.Billing.pdb under the project's obj\\Release directory.",
+      "event_refs": [
+        "Sysmon/1 WKS-4472 2020-09-20 21:39:26.517 csc.exe parent MSBuild.exe",
+        "Sysmon/11 WKS-4472 2020-09-20 21:39:26.456 C:\\a\\1\\s\\src\\Contoso.Billing\\obj\\Release\\Contoso.Billing.dll",
+        "Sysmon/11 WKS-4472 2020-09-20 21:39:27.255 C:\\a\\1\\s\\src\\Contoso.Billing\\obj\\Release\\Contoso.Billing.pdb"
+      ],
+      "any": [
+        "csc.exe",
+        "cvtres.exe",
+        "obj\\Release",
+        "Contoso.Billing.dll",
+        "Contoso.Billing.pdb"
+      ],
+      "record_refs": [
+        "R001384",
+        "R001394",
+        "R001497"
+      ]
+    }
+  ],
+  "inferences": [
+    {
+      "id": "I1",
+      "desc": "The corrected Agent.Listener -> Agent.Worker -> cmd -> MSBuild lineage, checkout provenance, and project-local compiler outputs are consistent with an automated CI build.",
+      "supports": [
+        "O1",
+        "O3",
+        "O4",
+        "O5",
+        "O6"
+      ],
+      "any": [
+        "automated CI build",
+        "lineage",
+        "checkout provenance",
+        "project-local"
+      ]
+    },
+    {
+      "id": "I2",
+      "desc": "Execution of a checked-out project by MSBuild could also execute inline build tasks, so normal-looking compiler behavior does not establish benign project content.",
+      "supports": [
+        "O4",
+        "O5",
+        "O6"
+      ],
+      "any": [
+        "inline build tasks",
+        "project content",
+        "MSBuild",
+        "does not establish benign"
+      ]
+    },
+    {
+      "id": "I3",
+      "desc": "The provided target-host window does not establish whether commit 3f9c1a7d was approved, whether the job was expected, or whether the agent or repository was compromised.",
+      "supports": [
+        "O1",
+        "O2",
+        "O3"
+      ],
+      "any": [
+        "not establish",
+        "approved",
+        "expected",
+        "compromised",
+        "commit"
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "type": "host",
+      "value": "WKS-4472 / 10.24.8.22",
+      "any": [
+        "WKS-4472",
+        "10.24.8.22"
+      ]
+    },
+    {
+      "type": "account",
+      "value": "CORP\\svc-build",
+      "any": [
+        "CORP\\svc-build",
+        "svc-build"
+      ]
+    },
+    {
+      "type": "process",
+      "value": "C:\\agent\\bin\\Agent.Worker.exe (PID 6788)",
+      "any": [
+        "Agent.Worker.exe",
+        "6788"
+      ]
+    },
+    {
+      "type": "process",
+      "value": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\MSBuild.exe",
+      "any": [
+        "MSBuild.exe",
+        "Framework64"
+      ]
+    },
+    {
+      "type": "file",
+      "value": "C:\\a\\1\\s\\src\\Contoso.Billing\\Contoso.Billing.csproj",
+      "any": [
+        "Contoso.Billing.csproj",
+        "C:\\a\\1\\s"
+      ]
+    },
+    {
+      "type": "commit",
+      "value": "3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b",
+      "any": [
+        "3f9c1a7d84be2015c9e6f0a4b7d21836ce905f4b",
+        "3f9c1a7d"
+      ]
+    }
+  ],
+  "investigations": [
+    {
+      "id": "P1",
+      "desc": "Ask the customer to confirm that WKS-4472, CORP\\svc-build, and build job 3f9c1a were authorized at the observed time.",
+      "any": [
+        "confirm",
+        "authorized",
+        "WKS-4472",
+        "svc-build",
+        "3f9c1a"
+      ]
+    },
+    {
+      "id": "P2",
+      "desc": "Inspect commit 3f9c1a7d and Contoso.Billing.csproj for inline tasks, unusual targets, downloaded content, or post-build execution.",
+      "any": [
+        "inspect commit",
+        "inline tasks",
+        "unusual targets",
+        "downloaded content",
+        "post-build"
+      ]
+    },
+    {
+      "id": "P3",
+      "desc": "Validate the agent registration, listener configuration, and pipeline run metadata against the customer's CI inventory.",
+      "any": [
+        "agent registration",
+        "listener configuration",
+        "pipeline metadata",
+        "CI inventory"
+      ]
+    },
+    {
+      "id": "P4",
+      "desc": "Review target-host activity after 21:39:29.2 for execution of build outputs, persistence, or unexpected network connections.",
+      "any": [
+        "after 21:39:29.2",
+        "build outputs",
+        "persistence",
+        "network connections"
+      ]
+    },
+    {
+      "id": "P5",
+      "desc": "If the job is confirmed, tune the rule using both the approved agent lineage and workspace root rather than a path-only exclusion.",
+      "any": [
+        "tune",
+        "approved agent lineage",
+        "workspace root",
+        "path-only"
+      ]
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "U1",
+      "desc": "Customer authorization and change-management context for this build are unavailable.",
+      "any": [
+        "authorization",
+        "change management",
+        "unavailable",
+        "customer"
+      ]
+    },
+    {
+      "id": "U2",
+      "desc": "The contents and trust status of commit 3f9c1a7d and Contoso.Billing.csproj are unknown.",
+      "any": [
+        "contents",
+        "trust status",
+        "commit",
+        "csproj",
+        "unknown"
+      ]
+    },
+    {
+      "id": "U3",
+      "desc": "Encoded PowerShell, SMB staging, persistence, and unexpected follow-on network activity are not observed in the corrected target-host window; activity outside that window is unknown.",
+      "any": [
+        "not observed in the corrected target-host window",
+        "PowerShell",
+        "SMB",
+        "persistence",
+        "outside"
+      ]
+    }
+  ],
+  "scenario_id": "scenario_010_msbuild_ci_build",
+  "scenario_family": "ambiguous_dual_use"
+}

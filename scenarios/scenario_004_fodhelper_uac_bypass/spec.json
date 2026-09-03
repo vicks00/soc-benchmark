@@ -1,0 +1,395 @@
+{
+  "scenario_id": "scenario_004_fodhelper_uac_bypass",
+  "scenario_family": "clear_malicious",
+  "title": "UAC bypass via the fodhelper.exe ms-settings handler hijack",
+  "source": {
+    "kind": "host",
+    "zip": "empire_uac_shellapi_fodhelper.zip",
+    "citation": "OTRF Security-Datasets / atomic/windows/privilege_escalation/host/empire_uac_shellapi_fodhelper",
+    "upstream_path": "datasets/atomic/windows/privilege_escalation/host/empire_uac_shellapi_fodhelper.zip"
+  },
+  "environment": {
+    "host": "WORKSTATION5",
+    "os": "Windows 10 (build 10.0.18362)",
+    "domain_role": "domain-joined workstation (THESHIRE)",
+    "telemetry_sources": [
+      "Sysmon Operational",
+      "Windows Security Auditing"
+    ]
+  },
+  "alert": {
+    "rule_id": "TNX-PRIVESC-T1548-002",
+    "rule_name": "Privilege Escalation: Auto-Elevating Binary Spawned Interpreter After User-Hive Handler Write",
+    "severity": "high",
+    "analyst_priority": "P2",
+    "mitre_attack": {
+      "tactic": "TA0004 - Privilege Escalation",
+      "technique": "T1548.002 - Abuse Elevation Control Mechanism: Bypass User Account Control"
+    },
+    "description": "A process wrote a shell-open command handler under the current user's HKCU Classes hive and an auto-elevating signed Windows binary subsequently launched a command interpreter. Auto-elevating binaries run at high integrity without a consent prompt; if they resolve a handler from a user-writable hive, an unprivileged process can have its own command executed at high integrity.",
+    "detection_logic": "Sysmon EventID=13 (RegistrySetValue) WHERE TargetObject MATCHES 'HKU\\\\*_Classes\\\\*\\\\Shell\\\\Open\\\\command\\\\*' FOLLOWED WITHIN 60s BY Sysmon EventID=1 (ProcessCreate) WHERE ParentImage IN (auto_elevating_binaries) AND Image IN (cmd.exe, powershell.exe, pwsh.exe, wscript.exe, cscript.exe, mshta.exe)",
+    "data_source": "Sysmon Operational (EventID 12, 13, 1)",
+    "fired_at": "2020-09-04T07:30:14.087Z",
+    "trigger_count": 1,
+    "host": "WORKSTATION5"
+  },
+  "select": {
+    "minimal": [
+      {
+        "event_id": "Sysmon/13",
+        "where": {
+          "target_object__contains": "ms-settings\\Shell\\Open\\command"
+        }
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "parent_image__endswith": "fodhelper.exe"
+        },
+        "limit": 1
+      }
+    ],
+    "curated": [
+      {
+        "event_id": "Sysmon/12",
+        "where": {
+          "target_object__endswith": "_Classes\\ms-settings"
+        }
+      },
+      {
+        "event_id": "Sysmon/12",
+        "where": {
+          "target_object__endswith": "ms-settings\\Shell\\Open\\command"
+        }
+      },
+      {
+        "event_id": "Sysmon/13",
+        "where": {
+          "target_object__contains": "ms-settings\\Shell\\Open\\command"
+        }
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "fodhelper.exe"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "parent_image__endswith": "fodhelper.exe"
+        },
+        "limit": 1
+      },
+      {
+        "event_id": "Sysmon/1",
+        "where": {
+          "image__endswith": "whoami.exe",
+          "command_line__contains": "/groups"
+        },
+        "limit": 1
+      }
+    ],
+    "verbose": {
+      "hosts": [
+        "WORKSTATION5"
+      ],
+      "start": "2020-09-04 07:30:13.0",
+      "end": "2020-09-04 07:30:14.35",
+      "drop_event_ids": [
+        800,
+        4103
+      ],
+      "keep_all_event_ids": [
+        1,
+        3,
+        11,
+        13
+      ],
+      "max_per_event_id": 18,
+      "max_events": 320
+    }
+  },
+  "enrichment": {
+    "fodhelper_role": "fodhelper.exe is a signed Microsoft binary (Features On Demand helper) marked autoElevate=true in its manifest. Windows elevates it to high integrity without displaying a UAC consent prompt when the user is a member of the local Administrators group.",
+    "hijack_mechanism": "On launch, fodhelper.exe opens the ms-settings: protocol. The shell resolves that protocol's handler through HKCU\\Software\\Classes first, which is writable by the unprivileged user. Writing Shell\\Open\\command there, and setting DelegateExecute to an empty value so the shell falls back to the (Default) verb string, causes fodhelper to launch the attacker's command instead of the settings UI \u2014 at fodhelper's elevated integrity level.",
+    "registry_chain": "Four key creations then two value writes, all by powershell.exe PID 1376, build the handler in order: ms-settings, \\Shell, \\Shell\\Open, \\Shell\\Open\\command, then DelegateExecute=(Empty) and (Default)=<command>.",
+    "payload_command": "The (Default) value is set to: powershell.exe -NoP -NonI -W Hidden -c $x=$((gp HKCU:Software\\Microsoft\\Windows Update).Update); powershell -NoP -NonI -W Hidden -enc $x \u2014 it reads a base64 blob out of a registry value named 'Update' under a key masquerading as Windows Update, then executes it with -enc.",
+    "execution_proof": "powershell.exe PID 7820 is created with fodhelper.exe as its parent and a command line byte-identical to the (Default) value written 0.95 seconds earlier. Parent-child lineage, not just timing, links the registry write to the elevated execution.",
+    "no_cleanup_note": "The registry keys are not removed within the captured window. The handler remains in place, so the same elevation can be replayed.",
+    "preceding_recon": "whoami.exe /groups executed shortly before the registry writes \u2014 consistent with an operator checking group membership and integrity level to decide whether a UAC bypass is worth attempting."
+  },
+  "gold": {
+    "verdict": {
+      "classification": "Malicious",
+      "recommended_action": "Escalate for Investigation",
+      "severity": "High",
+      "mitre_techniques": [
+        "T1548.002",
+        "T1112",
+        "T1059.001"
+      ],
+      "terminal_action_allowed": false,
+      "rationale": "PowerShell planted an ms-settings command handler containing hidden encoded PowerShell, launched fodhelper.exe, and a high-integrity fodhelper process then spawned a high-integrity PowerShell child with the planted command. This is strongly consistent with malicious abuse of an elevation-control handler and warrants SOC escalation. A consent.exe process is present in the chain, so the telemetry does not support a claim that no consent UI occurred; the evidence-bounded SOC reference does not authorize containment.",
+      "acceptable_alternatives": []
+    },
+    "observations": [
+      {
+        "id": "O1",
+        "desc": "powershell.exe PID 1376 set the user-hive ms-settings\\Shell\\Open\\command\\DelegateExecute value to empty and the (Default) value to a hidden PowerShell command that reads a registry value and executes it with -enc.",
+        "event_refs": [
+          "Microsoft-Windows-Sysmon/Operational EventID 13 @ 2020-09-04 07:30:13.135",
+          "Microsoft-Windows-Sysmon/Operational EventID 13 @ 2020-09-04 07:30:13.151"
+        ],
+        "any": [
+          "ms-settings",
+          "delegateexecute",
+          "(default)",
+          "-enc"
+        ],
+        "record_refs": [
+          "R000389",
+          "R000392"
+        ]
+      },
+      {
+        "id": "O2",
+        "desc": "PowerShell PID 1376 created fodhelper.exe PID 5224 at medium integrity, followed by Appinfo svchost.exe PID 4404 and consent.exe PID 6112; consent.exe is explicitly described as the Consent UI for administrative applications.",
+        "event_refs": [
+          "Microsoft-Windows-Sysmon/Operational EventID 1 @ 2020-09-04 07:30:13.250",
+          "Microsoft-Windows-Sysmon/Operational EventID 1 @ 2020-09-04 07:30:13.294",
+          "Microsoft-Windows-Sysmon/Operational EventID 1 @ 2020-09-04 07:30:13.339"
+        ],
+        "any": [
+          "fodhelper",
+          "medium",
+          "appinfo",
+          "consent.exe"
+        ],
+        "record_refs": [
+          "R000420",
+          "R000436",
+          "R000458"
+        ]
+      },
+      {
+        "id": "O3",
+        "desc": "PowerShell PID 1376 later created fodhelper.exe PID 7020 at high integrity under CORP\\j.marsh.",
+        "event_refs": [
+          "Microsoft-Windows-Sysmon/Operational EventID 1 @ 2020-09-04 07:30:13.517"
+        ],
+        "any": [
+          "fodhelper",
+          "7020",
+          "high integrity",
+          "j.marsh"
+        ],
+        "record_refs": [
+          "R000717"
+        ]
+      },
+      {
+        "id": "O4",
+        "desc": "fodhelper.exe PID 7020 created powershell.exe PID 7820 at high integrity with the same hidden, registry-reading, encoded command stored in the user-hive handler.",
+        "event_refs": [
+          "Microsoft-Windows-Sysmon/Operational EventID 1 @ 2020-09-04 07:30:14.087"
+        ],
+        "any": [
+          "7820",
+          "parent 7020",
+          "high integrity",
+          "windows update",
+          "-enc"
+        ],
+        "record_refs": [
+          "R001072"
+        ]
+      }
+    ],
+    "inferences": [
+      {
+        "id": "I1",
+        "desc": "The empty DelegateExecute value, planted default command, and subsequent fodhelper-to-PowerShell lineage are consistent with hijacking the ms-settings handler to execute attacker-selected code through fodhelper.",
+        "supports": [
+          "O1",
+          "O3",
+          "O4"
+        ],
+        "any": [
+          "handler hijack",
+          "fodhelper abuse",
+          "attacker-selected command"
+        ]
+      },
+      {
+        "id": "I2",
+        "desc": "The transition from the planting PowerShell process to a high-integrity fodhelper and high-integrity PowerShell child is consistent with elevation-control abuse, although the provided chain also contains consent.exe.",
+        "supports": [
+          "O2",
+          "O3",
+          "O4"
+        ],
+        "any": [
+          "elevation",
+          "uac abuse",
+          "consent observed"
+        ]
+      },
+      {
+        "id": "I3",
+        "desc": "The hidden encoded PowerShell command that retrieves another registry value is consistent with staged or obfuscated payload execution; the decoded payload and its effects are not directly shown.",
+        "supports": [
+          "O1",
+          "O4"
+        ],
+        "any": [
+          "encoded powershell",
+          "staged payload",
+          "obfuscated"
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "type": "host",
+        "value": "WKS-4471",
+        "any": [
+          "wks-4471"
+        ]
+      },
+      {
+        "type": "account",
+        "value": "CORP\\j.marsh",
+        "any": [
+          "j.marsh"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "powershell.exe PID 1376",
+        "any": [
+          "powershell",
+          "1376"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "fodhelper.exe PID 7020 (high integrity)",
+        "any": [
+          "fodhelper",
+          "7020"
+        ]
+      },
+      {
+        "type": "process",
+        "value": "powershell.exe PID 7820 (high integrity)",
+        "any": [
+          "7820",
+          "powershell"
+        ]
+      },
+      {
+        "type": "registry",
+        "value": "HKU\\S-1-5-21-2024000031-2024000032-2024000033-1104_Classes\\ms-settings\\Shell\\Open\\command",
+        "any": [
+          "ms-settings",
+          "shell\\open\\command",
+          "hku"
+        ]
+      }
+    ],
+    "investigations": [
+      {
+        "id": "P1",
+        "desc": "Confirm with the customer whether this registry modification and elevation sequence was authorized testing, administration, or incident-response activity.",
+        "any": [
+          "authorized",
+          "customer",
+          "testing",
+          "administration"
+        ]
+      },
+      {
+        "id": "P2",
+        "desc": "Retrieve and decode the registry value referenced as HKCU\\Software\\Microsoft\\Windows Update\\Update, then analyze the resulting payload safely.",
+        "any": [
+          "decode",
+          "windows update",
+          "payload",
+          "registry",
+          "-enc"
+        ]
+      },
+      {
+        "id": "P3",
+        "desc": "Review the full lineage and script content of PowerShell PIDs 1376 and 7820, including the long encoded parent command and subsequent child, file, registry, and network activity.",
+        "any": [
+          "1376",
+          "7820",
+          "lineage",
+          "script content"
+        ]
+      },
+      {
+        "id": "P4",
+        "desc": "Determine why consent.exe PID 6112 appeared, whether a user interacted with a consent UI, and how the medium- and high-integrity fodhelper instances relate.",
+        "any": [
+          "consent.exe",
+          "user interaction",
+          "medium integrity",
+          "high integrity"
+        ]
+      },
+      {
+        "id": "P5",
+        "desc": "Check the current endpoint state and later telemetry for persistence or cleanup of the ms-settings handler values.",
+        "any": [
+          "cleanup",
+          "persistence",
+          "ms-settings",
+          "current state"
+        ]
+      },
+      {
+        "id": "P6",
+        "desc": "Hunt for the same handler pattern, encoded PowerShell content, and related account or host activity across the environment.",
+        "any": [
+          "hunt",
+          "handler pattern",
+          "encoded powershell",
+          "related hosts"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "id": "U1",
+        "desc": "Customer authorization and change-management context for the handler changes and PowerShell execution are unknown.",
+        "any": [
+          "authorization",
+          "change management",
+          "customer context"
+        ]
+      },
+      {
+        "id": "U2",
+        "desc": "Whether a consent prompt was displayed or accepted cannot be determined from process telemetry alone, although consent.exe is observed in the provided chain.",
+        "any": [
+          "consent prompt",
+          "accepted",
+          "consent.exe observed"
+        ]
+      },
+      {
+        "id": "U3",
+        "desc": "The decoded registry-stored payload and the downstream impact of PowerShell PID 7820 are unknown.",
+        "any": [
+          "decoded payload",
+          "downstream impact",
+          "7820"
+        ]
+      }
+    ]
+  }
+}
